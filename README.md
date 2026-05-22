@@ -44,6 +44,5 @@
 ### 자주 발생하는 문제
 
 - Java 버전 충돌: `JAVA_HOME`이 올바른지 확인하고, `java -version`을 통해 17인지 체크하세요.
-- Connection Refused 에러 발생 시 DB가 켜져 있는지 확인하세요.
 
 
