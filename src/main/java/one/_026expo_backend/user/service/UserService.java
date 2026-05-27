@@ -22,7 +22,9 @@ public class UserService {
      * 로그인 아이디 중복 여부를 확인합니다.
      */
     public boolean isExistsLoginId(String loginId) {
-        if (loginId == null || loginId.isBlank()) return false;
+        if (loginId == null || loginId.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_LOGIN_ID);
+        }
         return userRepository.existsByLoginId(loginId);
     }
 
@@ -34,6 +36,22 @@ public class UserService {
         // 중복 아이디 체크
         if (userRepository.existsByLoginId(request.getLoginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_USER);
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
+        if (request.getAgreeTerms() == null || request.getAgreeTerms().isBlank()) {
+            throw new BusinessException(ErrorCode.TERMS_NOT_AGREED);
+        }
+
+        if (!"Y".equalsIgnoreCase(request.getAgreeTerms()) && !"N".equalsIgnoreCase(request.getAgreeTerms())) {
+            throw new BusinessException(ErrorCode.INVALID_AGREE_TERMS);
+        }
+
+        if (!"Y".equalsIgnoreCase(request.getAgreeTerms())) {
+            throw new BusinessException(ErrorCode.TERMS_NOT_AGREED);
         }
 
         String hashed = passwordEncoder.encode(request.getPassword());

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * * 예상치 못한 런타임 에러로부터 클라이언트에게 일관된 에러 포맷을 보장하기 위함
  */
 @Slf4j
-@RestControllerAdvice(basePackages = "mars.tripplanappbackend")
+@RestControllerAdvice(basePackages = "one._026expo_backend")
 public class GlobalExceptionHandler {
 
     /**

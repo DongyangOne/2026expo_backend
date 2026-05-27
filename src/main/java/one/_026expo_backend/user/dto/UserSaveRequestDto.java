@@ -20,27 +20,26 @@ import one._026expo_backend.user.enums.SocialType;
 public class UserSaveRequestDto {
 
     @Schema(description = "이름", example = "홍길동")
-    @NotBlank
-    @Size(max = 8)
+    @NotBlank(message = "이름은 필수입니다.")
+    @Size(max = 8, message = "이름은 8자 이하여야 합니다.")
     private String username;
 
     @Schema(description = "로그인 아이디", example = "user123")
-    @NotBlank
-    @Size(max = 12)
+    @NotBlank(message = "아이디는 필수입니다.")
+    @Size(max = 12, message = "아이디는 12자 이하여야 합니다.")
     private String loginId;
 
     @Schema(description = "비밀번호", example = "P@ssw0rd")
-    @NotBlank
-    @Size(min = 6, max = 128)
+    @NotBlank(message = "비밀번호는 필수입니다.")
+    @Size(min = 6, max = 128, message = "비밀번호는 6자 이상 128자 이하여야 합니다.")
     private String password;
 
     @Schema(description = "이메일", example = "user@example.com")
-    @Email
-    @NotBlank
+    @Email(message = "이메일 형식이 올바르지 않습니다.")
+    @NotBlank(message = "이메일은 필수입니다.")
     private String email;
 
-    @Schema(description = "이용약관 동의 여부 (Y/N)", example = "Y")
-    @NotBlank
+    @Schema(description = "이용약관 동의 여부", example = "Y", allowableValues = {"Y", "N"})
     private String agreeTerms;
 
     public Users toEntity(String encodedPassword, UseYnEnum termsAgreed) {
