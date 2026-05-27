@@ -18,7 +18,10 @@ public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public boolean isLoginIdDuplicate(String loginId) {
+    /**
+     * 로그인 아이디 중복 여부를 확인합니다.
+     */
+    public boolean isExistsLoginId(String loginId) {
         if (loginId == null || loginId.isBlank()) return false;
         return userRepository.existsByLoginId(loginId);
     }
