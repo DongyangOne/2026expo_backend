@@ -10,10 +10,9 @@ public enum ErrorCode {
 
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "INVALID_INPUT", "잘못된 요청입니다."),
     INVALID_LOGIN_ID(HttpStatus.BAD_REQUEST, "INVALID_LOGIN_ID", "아이디는 비어 있을 수 없습니다."),
-    INVALID_AGREE_TERMS(HttpStatus.BAD_REQUEST, "INVALID_AGREE_TERMS", "이용약관 동의는 Y 또는 N만 가능합니다."),
-    DUPLICATE_USER(HttpStatus.CONFLICT, "DUPLICATE_USER", "이미 존재하는 아이디입니다."),
-    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "DUPLICATE_EMAIL", "이미 존재하는 이메일입니다."),
-    TERMS_NOT_AGREED(HttpStatus.BAD_REQUEST, "TERMS_NOT_AGREED", "이용약관 동의는 필수입니다."),
+    DUPLICATE_USER(HttpStatus.CONFLICT, "DUPLICATE_USER", "이미 사용중인 아이디 입니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "DUPLICATE_EMAIL", "이미 사용중인 이메일입니다."),
+    TERMS_NOT_AGREED(HttpStatus.BAD_REQUEST, "TERMS_NOT_AGREED", "이용약관에 동의 해 주세요."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "FORBIDDEN", "권한이 없습니다."),
