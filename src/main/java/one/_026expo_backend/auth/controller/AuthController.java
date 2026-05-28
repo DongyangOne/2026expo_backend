@@ -9,6 +9,7 @@ import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
 import one._026expo_backend.auth.dto.SignupRequestDto;
+import one._026expo_backend.auth.dto.SignupResponseDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.UseYnEnum;
 import org.springframework.http.ResponseEntity;
@@ -39,13 +40,13 @@ public class AuthController {
      * LOCAL 회원가입 API
      *
      * @param request 유저 회원가입 요청 정보
-     * @return 회원가입 된 유저 응답 객체(수정 예정)
+     * @return 회원가입 된 유저 응답 객체
      */
     @Operation(summary = "LOCAL 회원가입", description="유저가 요청한 회원가입 정보로 LOCAL 회원가입을 진행합니다.")
     @ApiErrorExceptions({ErrorCode.INVALID_INPUT, ErrorCode.DUPLICATE_USER, ErrorCode.DUPLICATE_EMAIL, ErrorCode.TERMS_NOT_AGREED})
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<Long>> signup(@Valid @RequestBody SignupRequestDto request) {
-        Long id = authService.signup(request);
-        return ResponseEntity.ok(ApiResponse.ok(id));
+    public ResponseEntity<ApiResponse<SignupResponseDto>> signup(@Valid @RequestBody SignupRequestDto request) {
+        SignupResponseDto response = authService.signup(request);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

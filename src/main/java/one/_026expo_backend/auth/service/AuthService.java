@@ -5,6 +5,7 @@ import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.user.domain.Users;
+import one._026expo_backend.auth.dto.SignupResponseDto;
 import one._026expo_backend.auth.dto.SignupRequestDto;
 import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -37,11 +38,11 @@ public class AuthService {
      * LOCAL 회원가입을 처리한다.
      *
      * @param request 회원가입 요청 정보
-     * @return 저장된 사용자 ID
+     * @return 저장된 사용자 정보를 담은 응답 DTO
      * @throws BusinessException 아이디 또는 이메일이 중복된 경우, 또는 약관 동의가 Y가 아닌 경우 발생
      */
     @Transactional
-    public Long signup(SignupRequestDto request) {
+    public SignupResponseDto signup(SignupRequestDto request) {
         // 중복 아이디 체크
         if (userRepository.existsByLoginId(request.getLoginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_USER);
@@ -62,6 +63,11 @@ public class AuthService {
         Users user = request.toEntity(hashed, request.getAgreeTerms());
 
         Users saved = userRepository.save(user);
-        return saved.getId();
+        return SignupResponseDto.builder()
+            .username(saved.getUsername())
+            .loginId(saved.getLoginId())
+            .email(saved.getEmail())
+            .createdDate(saved.getCreatedAt())
+            .build();
     }
 }
