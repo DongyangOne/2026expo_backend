@@ -2,6 +2,7 @@ package one._026expo_backend.global.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -39,30 +40,31 @@ public class JwtTokenProvider {
     }
 
     /**
-     * userId 기반 AccessToken 생성
+     * userId와 role 기반 AccessToken 생성
      */
-    public String createAccessToken(Long userId) {
-        return createToken(userId, ACCESS, accessExpirationMs);
+    public String createAccessToken(Long userId, Role role) {
+        return createToken(userId, role, ACCESS, accessExpirationMs);
     }
 
     /**
-     * userId 기반 RefreshToken 생성
+     * userId와 role 기반 RefreshToken 생성
      */
-    public String createRefreshToken(Long userId) {
-        return createToken(userId, REFRESH, refreshExpirationMs);
+    public String createRefreshToken(Long userId, Role role) {
+        return createToken(userId, role, REFRESH, refreshExpirationMs);
     }
 
     /**
      * 토큰 생성 공통 로직
-     * userId를 기반으로 생성
+     * userId를 기반으로 생성하고 role 정보를 포함
      */
-    private String createToken(Long userId, String tokenType, long expirationMs) {
+    private String createToken(Long userId, Role role, String tokenType, long expirationMs) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
                 .setSubject(userId.toString())
                 .claim("token_type", tokenType)
+                .claim("role", role.toString())
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(getSigningKey())
@@ -79,6 +81,25 @@ public class JwtTokenProvider {
                     .parseClaimsJws(token)
                     .getBody();
             return Long.parseLong(claims.getSubject());
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 토큰에서 Role 추출
+     */
+    public Role getRole(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .parseClaimsJws(token)
+                    .getBody();
+            String roleString = claims.get("role", String.class);
+            if (roleString != null) {
+                return Role.valueOf(roleString);
+            }
+            return null;
         } catch (JwtException | IllegalArgumentException e) {
             return null;
         }

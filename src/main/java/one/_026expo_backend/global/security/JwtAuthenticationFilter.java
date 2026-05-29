@@ -5,14 +5,19 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * JWT 토큰 검증 필터
@@ -33,11 +38,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 토큰이 존재하고 유효하면 인증 정보 설정
             if (token != null && jwtProvider.validateToken(token) == UseYnEnum.Y) {
                 Long userId = jwtProvider.getUserId(token);
+                Role role = jwtProvider.getRole(token);
+
+                // 역할 정보를 Spring Security 권한 접근용 GrantedAuthority로 변환
+                List<GrantedAuthority> authorities = new ArrayList<>();
+                if (role != null) {
+                    // Spring Security는 ROLE_ 접두사 권장
+                    authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toString()));
+                }
 
                 // Spring Security의 Authentication 객체 생성
-                // Principal: userId, Credentials: 토큰, Authorities: 빈 리스트 (현재 Role 없음)
+                // Principal: userId, Credentials: 토큰, Authorities: 사용자의 역할 정보
                 Authentication auth = new UsernamePasswordAuthenticationToken(
-                        userId, token, null
+                        userId, token, authorities
                 );
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }

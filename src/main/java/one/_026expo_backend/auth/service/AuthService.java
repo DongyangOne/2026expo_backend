@@ -2,6 +2,7 @@ package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.global.enums.ErrorCode;
+import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.user.domain.Users;
@@ -98,9 +99,9 @@ public class AuthService {
 
         user.updateRememberMe(requestDto.getRememberMe());
 
-        // 토큰 생성
-        String accessToken = jwtProvider.createAccessToken(user.getId());
-        String refreshToken = jwtProvider.createRefreshToken(user.getId());
+        // 토큰 생성 (일반 유저 로그인이므로 Role.USER 직접 넣음)
+        String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
+        String refreshToken = jwtProvider.createRefreshToken(user.getId(), Role.USER);
         
         // 리프레시 토큰 만료 시간 계산 후 저장
         Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(refreshToken);
