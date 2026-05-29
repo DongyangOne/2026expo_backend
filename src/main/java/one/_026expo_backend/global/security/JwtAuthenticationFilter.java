@@ -35,24 +35,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = extractTokenFromRequest(request);
 
-            // 토큰이 존재하고 유효하면 인증 정보 설정
+            // 토큰이 존재하고 유효하며 ACCESS 타입이면 인증 정보 설정
             if (token != null && jwtProvider.validateToken(token) == UseYnEnum.Y) {
-                Long userId = jwtProvider.getUserId(token);
-                Role role = jwtProvider.getRole(token);
+                String tokenType = jwtProvider.getTokenType(token);
+                
+                // ACCESS 토큰만 API 요청에 사용 가능 (REFRESH 토큰 차단)
+                if (tokenType != null && tokenType.equals("ACCESS")) {
+                    Long userId = jwtProvider.getUserId(token);
+                    Role role = jwtProvider.getRole(token);
 
-                // 역할 정보를 Spring Security 권한 접근용 GrantedAuthority로 변환
-                List<GrantedAuthority> authorities = new ArrayList<>();
-                if (role != null) {
-                    // Spring Security는 ROLE_ 접두사 권장
-                    authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toString()));
+                    // 역할 정보를 Spring Security 권한 접근용 GrantedAuthority로 변환
+                    List<GrantedAuthority> authorities = new ArrayList<>();
+                    if (role != null) {
+                        // Spring Security는 ROLE_ 접두사 권장
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toString()));
+                    }
+
+                    // Spring Security의 Authentication 객체 생성
+                    // Principal: userId, Credentials: 토큰, Authorities: 사용자의 역할 정보
+                    Authentication auth = new UsernamePasswordAuthenticationToken(
+                            userId, token, authorities
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(auth);
                 }
-
-                // Spring Security의 Authentication 객체 생성
-                // Principal: userId, Credentials: 토큰, Authorities: 사용자의 역할 정보
-                Authentication auth = new UsernamePasswordAuthenticationToken(
-                        userId, token, authorities
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
             }
         } catch (Exception e) {
             // 토큰 검증 중 예외 발생해도 다음 필터 진행 (요청 끊김 방지)

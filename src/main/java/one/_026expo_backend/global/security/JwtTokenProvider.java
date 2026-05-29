@@ -106,6 +106,21 @@ public class JwtTokenProvider {
     }
 
     /**
+     * 토큰에서 토큰 타입 추출 (ACCESS 또는 REFRESH)
+     */
+    public String getTokenType(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .parseClaimsJws(token)
+                    .getBody();
+            return claims.get("token_type", String.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
      * 토큰 유효성 검증
      */
     public UseYnEnum validateToken(String token) {
