@@ -2,6 +2,7 @@ package one._026expo_backend.global.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import java.util.Date;
  * * 사용자 인증 후 accessToken 발급
  * * 이후 API 호출 시 토큰 검증에 사용
  */
+@Slf4j
 @Component
 public class JwtTokenProvider {
 
@@ -82,6 +84,7 @@ public class JwtTokenProvider {
                     .getBody();
             return Long.parseLong(claims.getSubject());
         } catch (JwtException | IllegalArgumentException e) {
+            log.debug("토큰에서 userId 추출 실패", e);
             return null;
         }
     }
@@ -101,6 +104,7 @@ public class JwtTokenProvider {
             }
             return null;
         } catch (JwtException | IllegalArgumentException e) {
+            log.debug("토큰에서 role 추출 실패", e);
             return null;
         }
     }
@@ -116,6 +120,7 @@ public class JwtTokenProvider {
                     .getBody();
             return claims.get("token_type", String.class);
         } catch (JwtException | IllegalArgumentException e) {
+            log.debug("토큰에서 토큰 타입 추출 실패", e);
             return null;
         }
     }
@@ -130,6 +135,7 @@ public class JwtTokenProvider {
                     .parseClaimsJws(token);
             return UseYnEnum.Y;
         } catch (JwtException | IllegalArgumentException e) {
+            log.debug("토큰 유효성 검증 실패", e);
             return UseYnEnum.N;
         }
     }
@@ -145,6 +151,7 @@ public class JwtTokenProvider {
                     .getBody();
             return claims.getExpiration();
         } catch (JwtException | IllegalArgumentException e) {
+            log.debug("토큰에서 만료 시간 조회 실패", e);
             return null;
         }
     }
