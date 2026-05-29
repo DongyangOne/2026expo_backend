@@ -60,7 +60,7 @@ public class AuthController {
      * @return 사용자 정보와 토큰을 포함한 로그인 응답
      */
     @Operation(summary = "LOCAL 로그인", description="유저가 요청한 로그인 정보로 LOCAL 로그인 진행합니다.")
-    @ApiErrorExceptions({ErrorCode.INVALID_CREDENTIALS})
+    @ApiErrorExceptions({ErrorCode.INVALID_CREDENTIALS, ErrorCode.DELETED_USER, ErrorCode.SOCIAL_LOGIN_REQUIRED, ErrorCode.EMAIL_NOT_VERIFIED})
     @PostMapping("/login")
     public ApiResponse<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto) {
         return ApiResponse.ok(authService.login(requestDto));
