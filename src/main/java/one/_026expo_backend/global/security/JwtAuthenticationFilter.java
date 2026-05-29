@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,6 +25,7 @@ import java.util.List;
  * * 모든 요청을 가로채서 Authorization 헤더의 JWT 토큰을 검증
  * * 유효한 토큰이면 SecurityContext에 사용자 정보를 저장하여 이후 @PreAuthorize 등에서 사용 가능하게 함
  */
+@Slf4j  // logger 자동 주입을 위해 필요
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -59,8 +61,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             }
+        } catch (IllegalArgumentException e) {
+            // 토큰이 null이거나 빈 문자열인 경우
+            log.debug("JWT 토큰이 null이거나 비어있습니다", e);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            // 토큰의 유효 기간이 만료된 경우
+            log.debug("JWT 토큰이 만료되었습니다", e);
+        } catch (io.jsonwebtoken.MalformedJwtException e) {
+            // 토큰 형식이 잘못된 경우 (손상)
+            log.debug("JWT 토큰 형식이 올바르지 않습니다", e);
+        } catch (io.jsonwebtoken.SignatureException e) {
+            // 토큰 서명 검증에 실패한 경우 (변조)
+            log.debug("JWT 토큰의 서명이 유효하지 않습니다", e);
+        } catch (io.jsonwebtoken.UnsupportedJwtException e) {
+            // 지원하지 않는 JWT 형식인 경우
+            log.debug("지원하지 않는 JWT 형식입니다", e);
         } catch (Exception e) {
-            // 토큰 검증 중 예외 발생해도 다음 필터 진행 (요청 끊김 방지)
+            // 위의 예외가 아닌 다른 예외 발생 시
+            log.warn("JWT 검증 중 예상치 못한 예외가 발생했습니다", e);
         }
         filterChain.doFilter(request, response);
     }
