@@ -28,6 +28,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -62,7 +64,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/user/signup").permitAll()
                         .requestMatchers("/api/v1/user/exists").permitAll()
                         .anyRequest().authenticated()
-                );
+                )
+                // 모든 요청 전에 JWT필터로 토큰 검증 수행
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

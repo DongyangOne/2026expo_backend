@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.auth.dto.LoginRequestDto;
+import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
@@ -16,7 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("api/v1/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Tag(name="auth", description = "auth 엔드포인트")
 public class AuthController {
@@ -48,5 +50,19 @@ public class AuthController {
     public ResponseEntity<ApiResponse<SignupResponseDto>> signup(@Valid @RequestBody SignupRequestDto request) {
         SignupResponseDto response = authService.signup(request);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+    
+    /**
+     * LOCAL 로그인 API
+     * loginId와 비밀번호로 사용자를 인증, AccessToken과 RefreshToken을 발급
+     * 
+     * @param requestDto 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답
+     */
+    @Operation(summary = "LOCAL 로그인", description="유저가 요청한 로그인 정보로 LOCAL 로그인 진행합니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_CREDENTIALS, ErrorCode.DELETED_USER, ErrorCode.SOCIAL_LOGIN_REQUIRED, ErrorCode.EMAIL_NOT_VERIFIED})
+    @PostMapping("/login")
+    public ApiResponse<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto) {
+        return ApiResponse.ok(authService.login(requestDto));
     }
 }
