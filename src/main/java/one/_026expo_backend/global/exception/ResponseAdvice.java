@@ -15,7 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
  * * 컨트롤러에서 반환하는 순수 데이터를 공통 응답 규격(ApiResponse)으로 자동 감싸기 위해 사용함
  * * 중복 코드를 줄이고 모든 API 응답의 일관성을 강제함
  */
-@RestControllerAdvice(basePackages = "mars.tripplanappbackend")
+@RestControllerAdvice(basePackages = "one._026expo_backend")
 public class ResponseAdvice implements ResponseBodyAdvice<Object> {
 
     /**
