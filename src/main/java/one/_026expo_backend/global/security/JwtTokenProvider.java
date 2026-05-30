@@ -42,6 +42,16 @@ public class JwtTokenProvider {
     }
 
     /**
+     * 토큰의 Claims를 조회한다.
+     */
+    public Claims parseClaims(String token) {
+        return Jwts.parser()
+                .setSigningKey(getSigningKey())
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    /**
      * userId와 role 기반 AccessToken 생성
      */
     public String createAccessToken(Long userId, Role role) {

@@ -1,5 +1,8 @@
 package one._026expo_backend.auth.service;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
@@ -10,6 +13,8 @@ import one._026expo_backend.auth.dto.SignupResponseDto;
 import one._026expo_backend.auth.dto.SignupRequestDto;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
+import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
+import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.global.security.JwtTokenProvider;
 import one._026expo_backend.user.repository.UserRepository;
 import one._026expo_backend.user.enums.SocialType;
@@ -28,6 +33,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtProvider;
+    private final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
 
     /**
      * loginId의 중복 여부를 확인한다.
@@ -133,6 +139,70 @@ public class AuthService {
                 .rememberMe(user.getRememberMe())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .build();
+    }
+
+    /**
+     * Refresh Token을 검증한 뒤 Access Token과 Refresh Token을 재발급한다.
+     */
+    @Transactional
+    public RefreshTokenResponseDto refreshToken(RefreshTokenRequestDto request) {
+        String refreshToken = request.getRefreshToken();
+
+        if (refreshToken == null || refreshToken.isBlank()) {
+            // 요청의 refreshToken이 비어있는 경우
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        Claims claims;
+        try {
+            claims = jwtProvider.parseClaims(refreshToken);
+        } catch (ExpiredJwtException e) { // 리프레시 토큰 만료
+            throw new BusinessException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+        } catch (JwtException | IllegalArgumentException e) { // 서명 오류, 형식 오류, 손상된 토큰 등
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        String tokenType = claims.get("token_type", String.class);
+        if (!REFRESH.equals(tokenType)) {  // 토큰 타입이 "REFRESH"가 아닌 경우
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        Long userId = Long.parseLong(claims.getSubject());
+
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN)); 
+                // userId로 유저를 찾을 수 없는 경우지만, 토큰이 유효하지 않은 것으로 간주하여 INVALID_TOKEN 처리
+                // 현재 흐름이 토큰 안의 userId와 DB 상태를 비교하는 것이기 때문
+
+        if (user.getIsDeleted() != UseYnEnum.N) {
+            // 탈퇴한 계정인 경우
+            throw new BusinessException(ErrorCode.DELETED_USER);
+        }
+
+        if (user.getRefreshToken() == null || !user.getRefreshToken().equals(refreshToken)) {
+            // DB에 저장된 리프레시 토큰과 다른 경우
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        if (user.getRefreshExpiredAt() != null && user.getRefreshExpiredAt().isBefore(LocalDateTime.now())) {
+            // DB 기준 만료 시각이 지난 경우
+            throw new BusinessException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+        }
+
+        Role role = Role.valueOf(claims.get("role", String.class));
+        String newAccessToken = jwtProvider.createAccessToken(user.getId(), role);
+        String newRefreshToken = jwtProvider.createRefreshToken(user.getId(), role);
+
+        Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(newRefreshToken);
+        LocalDateTime refreshExpiredAt = refreshTokenExpiration.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime();
+        user.updateRefreshToken(newRefreshToken, refreshExpiredAt);
+
+        return RefreshTokenResponseDto.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .build();
     }
 }
