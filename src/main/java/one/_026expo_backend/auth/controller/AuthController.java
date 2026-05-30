@@ -6,7 +6,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
+import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
+import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.service.AuthService;
+import one._026expo_backend.auth.service.EmailSendService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name="auth", description = "auth 엔드포인트")
 public class AuthController {
     private final AuthService authService;
+    private final EmailSendService emailSendService;
 
     /**
      * loginId 중복 체크 API
@@ -64,5 +68,18 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto) {
         return ApiResponse.ok(authService.login(requestDto));
+    }
+
+    /**
+     * 회원가입 이메일 인증번호 발송 API
+     */
+    @Operation(summary = "이메일 인증번호 발송", description = "입력한 이메일로 회원가입용 6자리 인증번호를 발송합니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_INPUT, ErrorCode.EMAIL_SEND_FAILED})
+    @PostMapping("/email/send")
+    public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendVerificationEmail(
+            @Valid @RequestBody EmailSendRequestDto dto
+    ) {
+        EmailSendResponseDto response = emailSendService.sendVerificationEmail(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }
