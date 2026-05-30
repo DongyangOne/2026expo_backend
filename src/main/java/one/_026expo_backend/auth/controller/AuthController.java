@@ -8,6 +8,8 @@ import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
+import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
+import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailSendService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
@@ -81,5 +83,21 @@ public class AuthController {
     ) {
         EmailSendResponseDto response = emailSendService.sendVerificationEmail(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+  
+    /**
+     * Refresh Token 재발급 API
+     * 앱에서 저장된 Refresh Token을 전달하면 Access Token과 Refresh Token을 새로 발급합니다.
+     *
+     * @param request 리프레시 토큰 요청 데이터
+     * @return 갱신된 사용자 정보와 토큰 응답
+     */
+    @Operation(summary = "Refresh Token 재발급", description =
+            "앱에서 전달한 Refresh Token으로 Access Token과 Refresh Token을 재발급합니다. <br>앱에서는 Access Token만 재저장하는 것이 아닌, 새로 발급된 Refresh Token도 함께 재저장해야 합니다."
+    )
+    @ApiErrorExceptions({ErrorCode.INVALID_TOKEN, ErrorCode.EXPIRED_REFRESH_TOKEN, ErrorCode.DELETED_USER})
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<RefreshTokenResponseDto>> refreshToken(@Valid @RequestBody RefreshTokenRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.ok(authService.refreshToken(request)));
     }
 }
