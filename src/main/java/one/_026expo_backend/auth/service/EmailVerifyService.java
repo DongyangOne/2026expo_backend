@@ -56,6 +56,5 @@ public class EmailVerifyService {
              log.error("이메일 인증 프로세스 완료 처리 중 Redis 오류 발생 - 대상: {}, 이유: {}", dto.getEmail(), e.getMessage());
              throw new BusinessException(ErrorCode.INTERNAL_ERROR);
          }
-
     }
 }

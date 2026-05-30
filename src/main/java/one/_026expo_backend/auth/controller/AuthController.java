@@ -104,10 +104,17 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(authService.refreshToken(request)));
     }
 
+    /**
+     * 이메일로 전송된 인증 번호 검증 API
+     * <p>발송된 인증 번호를 검증하고, 성공 시 그 상태를 30분간 유지합니다.</p>
+     *
+     * @param dto 이메일 주소와 검증항 인증 번호
+     * @return 성공 시 Void 데이터가 포함된 ApiResponse
+     */
     @Operation(summary = "이메일로 전송된 인증 번호 검증", description = "발송된 6자리 인증 번호를 검증합니다.")
     @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.INTERNAL_ERROR})
     @PostMapping("/email/check")
-    public  ResponseEntity<ApiResponse<EmailCheckRequestDto>> checkEmail(
+    public  ResponseEntity<ApiResponse<Void>> checkEmail(
             @Valid @RequestBody EmailCheckRequestDto dto) {
         emailVerifyService.verifyAuthCode(dto);
         return ResponseEntity.ok(ApiResponse.ok(null));
