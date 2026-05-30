@@ -6,12 +6,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
+import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
 import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailSendService;
+import one._026expo_backend.auth.service.EmailVerifyService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthService authService;
     private final EmailSendService emailSendService;
+    private final EmailVerifyService emailVerifyService;
 
     /**
      * loginId 중복 체크 API
@@ -99,5 +102,14 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<RefreshTokenResponseDto>> refreshToken(@Valid @RequestBody RefreshTokenRequestDto request) {
         return ResponseEntity.ok(ApiResponse.ok(authService.refreshToken(request)));
+    }
+
+    @Operation(summary = "이메일로 전송된 인증 번호 검증", description = "발송된 6자리 인증 번호를 검증합니다.")
+    @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.INTERNAL_ERROR})
+    @PostMapping("/email/check")
+    public  ResponseEntity<ApiResponse<EmailCheckRequestDto>> checkEmail(
+            @Valid @RequestBody EmailCheckRequestDto dto) {
+        emailVerifyService.verifyAuthCode(dto);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }
