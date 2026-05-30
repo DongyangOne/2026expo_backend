@@ -42,6 +42,16 @@ public class JwtTokenProvider {
     }
 
     /**
+     * 토큰의 Claims를 조회한다.
+     */
+    public Claims parseClaims(String token) {
+        return Jwts.parser()
+                .setSigningKey(getSigningKey())
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    /**
      * userId와 role 기반 AccessToken 생성
      */
     public String createAccessToken(Long userId, Role role) {
@@ -78,10 +88,7 @@ public class JwtTokenProvider {
      */
     public Long getUserId(String token) {
         try {
-            Claims claims = Jwts.parser()
-                    .setSigningKey(getSigningKey())
-                    .parseClaimsJws(token)
-                    .getBody();
+            Claims claims = parseClaims(token);
             return Long.parseLong(claims.getSubject());
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("토큰에서 userId 추출 실패", e);
@@ -94,10 +101,7 @@ public class JwtTokenProvider {
      */
     public Role getRole(String token) {
         try {
-            Claims claims = Jwts.parser()
-                    .setSigningKey(getSigningKey())
-                    .parseClaimsJws(token)
-                    .getBody();
+            Claims claims = parseClaims(token);
             String roleString = claims.get("role", String.class);
             if (roleString != null) {
                 return Role.valueOf(roleString);
@@ -114,10 +118,7 @@ public class JwtTokenProvider {
      */
     public String getTokenType(String token) {
         try {
-            Claims claims = Jwts.parser()
-                    .setSigningKey(getSigningKey())
-                    .parseClaimsJws(token)
-                    .getBody();
+            Claims claims = parseClaims(token);
             return claims.get("token_type", String.class);
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("토큰에서 토큰 타입 추출 실패", e);
@@ -130,9 +131,7 @@ public class JwtTokenProvider {
      */
     public UseYnEnum validateToken(String token) {
         try {
-            Jwts.parser()
-                    .setSigningKey(getSigningKey())
-                    .parseClaimsJws(token);
+            parseClaims(token);
             return UseYnEnum.Y;
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("토큰 유효성 검증 실패", e);
@@ -145,10 +144,7 @@ public class JwtTokenProvider {
      */
     public Date getTokenExpirationTime(String token) {
         try {
-            Claims claims = Jwts.parser()
-                    .setSigningKey(getSigningKey())
-                    .parseClaimsJws(token)
-                    .getBody();
+            Claims claims = parseClaims(token);
             return claims.getExpiration();
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("토큰에서 만료 시간 조회 실패", e);
