@@ -123,14 +123,7 @@ public class AuthService {
 
         // 토큰 생성 (일반 유저 로그인이므로 Role.USER 직접 넣음)
         String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
-        String refreshToken = jwtProvider.createRefreshToken(user.getId(), Role.USER);
-        
-        // 리프레시 토큰 만료 시간 계산 후 저장
-        Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(refreshToken);
-        LocalDateTime refreshExpiredAt = refreshTokenExpiration.toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalDateTime();
-        user.updateRefreshToken(refreshToken, refreshExpiredAt);
+        String refreshToken = createAndStoreRefreshToken(user, Role.USER);
 
         return LoginResponseDto.builder()
                 .userId(user.getId())
@@ -192,17 +185,28 @@ public class AuthService {
 
         Role role = Role.valueOf(claims.get("role", String.class));
         String newAccessToken = jwtProvider.createAccessToken(user.getId(), role);
-        String newRefreshToken = jwtProvider.createRefreshToken(user.getId(), role);
-
-        Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(newRefreshToken);
-        LocalDateTime refreshExpiredAt = refreshTokenExpiration.toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalDateTime();
-        user.updateRefreshToken(newRefreshToken, refreshExpiredAt);
+        String newRefreshToken = createAndStoreRefreshToken(user, role);
 
         return RefreshTokenResponseDto.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .build();
     }
+
+        /**
+         * Refresh Token을 생성하고 DB에 만료 시각과 함께 저장 후 발급된 Refresh Token을 반환한다.
+         * AuthService에서만 사용한다.
+         */
+        private String createAndStoreRefreshToken(Users user, Role role) {
+        String refreshToken = jwtProvider.createRefreshToken(user.getId(), role);
+
+        // 리프레시 토큰 만료 시간 계산 후 저장
+        Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(refreshToken);
+        LocalDateTime refreshExpiredAt = refreshTokenExpiration.toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDateTime();
+        user.updateRefreshToken(refreshToken, refreshExpiredAt);
+
+        return refreshToken;
+        }
 }
