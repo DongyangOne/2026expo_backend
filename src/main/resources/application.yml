@@ -19,6 +19,23 @@ spring:
       ddl-auto: update          #초기에만 update로 설정, 이후에는 validate로 변경하여 스키마 변경 방지
     show-sql: true
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    auth:
+      code-ttl-minutes: 5
+      verified-ttl-minutes: 30
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: true
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
