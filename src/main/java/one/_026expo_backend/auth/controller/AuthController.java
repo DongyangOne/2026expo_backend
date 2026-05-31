@@ -6,12 +6,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
+import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
 import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
+import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
-import one._026expo_backend.auth.service.EmailSendService;
+import one._026expo_backend.auth.service.EmailService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
@@ -28,7 +30,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name="auth", description = "auth 엔드포인트")
 public class AuthController {
     private final AuthService authService;
-    private final EmailSendService emailSendService;
+    private final EmailService emailService;
 
     /**
      * loginId 중복 체크 API
@@ -81,7 +83,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendVerificationEmail(
             @Valid @RequestBody EmailSendRequestDto dto
     ) {
-        EmailSendResponseDto response = emailSendService.sendVerificationEmail(dto);
+        EmailSendResponseDto response = emailService.sendVerificationEmail(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
   
@@ -99,5 +101,21 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<RefreshTokenResponseDto>> refreshToken(@Valid @RequestBody RefreshTokenRequestDto request) {
         return ResponseEntity.ok(ApiResponse.ok(authService.refreshToken(request)));
+    }
+
+    /**
+     * 이메일로 전송된 인증 번호 검증 API
+     * <p>발송된 인증 번호를 검증하고, 성공 시 그 상태를 30분간 유지합니다.</p>
+     *
+     * @param dto 이메일 주소와 검증항 인증 번호
+     * @return 성공 시 Void 데이터가 포함된 ApiResponse
+     */
+    @Operation(summary = "이메일로 전송된 인증 번호 검증", description = "발송된 6자리 인증 번호를 검증합니다.")
+    @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.INTERNAL_ERROR})
+    @PostMapping("/email/check")
+    public  ResponseEntity<ApiResponse<EmailCheckResponseDto>> checkEmail(
+            @Valid @RequestBody EmailCheckRequestDto dto) {
+        EmailCheckResponseDto response = emailService.verifyAuthCode(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }
