@@ -4,7 +4,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
-import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
@@ -16,7 +15,6 @@ import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
-import one._026expo_backend.auth.service.KakaoOAuthClient.KakaoProfile;
 import one._026expo_backend.global.security.JwtTokenProvider;
 import one._026expo_backend.user.repository.UserRepository;
 import one._026expo_backend.user.enums.SocialType;
@@ -35,9 +33,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtProvider;
-    private final KakaoOAuthClient kakaoOAuthClient;
     private final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
-    private final String KAKAO_DEFAULT_USERNAME = "카카오회원"; // 카카오 회원 이름 상수 설정 
 
     /**
      * loginId의 중복 여부를 확인한다.
@@ -140,55 +136,6 @@ public class AuthService {
     }
 
     /**
-     * KAKAO 로그인을 처리한다.
-     * 카카오 계정 식별자로 기존 유저를 조회하고, 없으면 신규 회원으로 생성한다.
-     */
-    @Transactional
-    public LoginResponseDto kakaoLogin(KakaoLoginRequestDto requestDto) {
-        // 인가 코드로 카카오 사용자 정보를 가져옴
-        KakaoProfile kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
-
-        Users user = userRepository.findBySocialTypeAndSocialProviderId(SocialType.KAKAO, kakaoProfile.providerId())
-                .map(existingUser -> {
-                    // 탈퇴한 계정이면 로그인하지 못함
-                    if (existingUser.getIsDeleted() != UseYnEnum.N) {
-                        throw new BusinessException(ErrorCode.DELETED_USER);
-                    }
-                    return existingUser;
-                })
-                // 처음 들어온 사용자면 새 계정으로 저장
-                .orElseGet(() -> userRepository.save(Users.builder()
-                        .username(resolveKakaoUsername(kakaoProfile.nickname()))
-                        .loginId(null)
-                        .password(null)
-                        .email(kakaoProfile.email())
-                        .emailVerified(UseYnEnum.Y) // 이메일 인증 Y
-                        .rememberMe(requestDto.getRememberMe())
-                        .termsAgreed(UseYnEnum.Y)   // 약관 동의 Y로 가정
-                        .socialProviderId(kakaoProfile.providerId())    // 소셜 로그인 식별 번호
-                        .socialType(SocialType.KAKAO)
-                        .isDeleted(UseYnEnum.N)
-                        .deletedAt(null)
-                        .build()));
-
-        // 로그인 유지 값 갱신
-        user.updateRememberMe(requestDto.getRememberMe());
-
-        // 카카오 로그인 성공 후 JWT 토큰 발급
-        String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
-        String refreshToken = createAndStoreRefreshToken(user, Role.USER);
-
-        return LoginResponseDto.builder()
-                .userId(user.getId())
-                .loginId(user.getLoginId())
-                .username(user.getUsername())
-                .rememberMe(user.getRememberMe())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
-    }
-
-    /**
      * Refresh Token을 검증한 뒤 Access Token과 Refresh Token을 재발급한다.
      */
     @Transactional
@@ -244,36 +191,6 @@ public class AuthService {
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .build();
-    }
-
-    /**
-     * 카카오에서 받아온 닉네임을 서버에 저장할 username으로 정리한다.
-     * 카카오 로그인/회원가입 처리하는 kakaoLogin() 메소드에서 사용.
-     *
-     * @param nickname 카카오에서 받아온 닉네임
-     * @return 정리된 username
-     */
-    private String resolveKakaoUsername(String nickname) {
-        String resolvedNickname;
-
-        if (nickname == null || nickname.isBlank()) {
-            return KAKAO_DEFAULT_USERNAME; // 닉네임이 비어있으면 기본값 "카카오회원" 으로 저장
-        } else {
-            resolvedNickname = nickname.trim();
-        }
-
-        if (resolvedNickname.length() < 2) { // 이름이 두 글자 미만인 경우에도 "카카오회원" (username 규칙 통일)
-            return KAKAO_DEFAULT_USERNAME;
-        }
-
-        String finalUsername;
-        if (resolvedNickname.length() > 8) {
-            finalUsername = resolvedNickname.substring(0, 8); // 이름이 8자 초과인 경우 8자까지만 잘라서 저장
-        } else {
-            finalUsername = resolvedNickname;
-        }
-
-        return finalUsername;
     }
 
         /**

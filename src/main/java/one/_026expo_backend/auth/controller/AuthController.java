@@ -15,6 +15,7 @@ import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailService;
+import one._026expo_backend.auth.service.SocialLoginService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthService authService;
     private final EmailService emailService;
+    private final SocialLoginService socialLoginService;
 
     /**
      * loginId 중복 체크 API
@@ -83,7 +85,7 @@ public class AuthController {
     @ApiErrorExceptions({ErrorCode.KAKAO_EMAIL_REQUIRED, ErrorCode.KAKAO_LOGIN_FAILED, ErrorCode.DELETED_USER})
     @PostMapping("/kakao/login")
     public ResponseEntity<ApiResponse<LoginResponseDto>> kakaoLogin(@Valid @RequestBody KakaoLoginRequestDto requestDto) {
-        return ResponseEntity.ok(ApiResponse.ok(authService.kakaoLogin(requestDto)));
+        return ResponseEntity.ok(ApiResponse.ok(socialLoginService.kakaoLogin(requestDto)));
     }
 
     /**
