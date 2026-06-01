@@ -1,7 +1,7 @@
 package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
-import one._026expo_backend.auth.dto.LoginResponseDto;
+import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
 import one._026expo_backend.auth.service.KakaoOAuthClient.KakaoProfile;
 import one._026expo_backend.global.enums.ErrorCode;
@@ -34,7 +34,7 @@ public class SocialLoginService {
      * 카카오 계정 식별자로 기존 유저를 조회하고, 없으면 신규 회원으로 생성한다.
      */
     @Transactional
-    public LoginResponseDto kakaoLogin(KakaoLoginRequestDto requestDto) {
+    public SocialLoginResponseDto kakaoLogin(KakaoLoginRequestDto requestDto) {
         KakaoProfile kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
 
         Users user = userRepository.findBySocialTypeAndSocialProviderId(SocialType.KAKAO, kakaoProfile.providerId())
@@ -63,9 +63,10 @@ public class SocialLoginService {
         String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
         String refreshToken = createAndStoreRefreshToken(user, Role.USER);
 
-        return LoginResponseDto.builder()
+        return SocialLoginResponseDto.builder()
                 .userId(user.getId())
-                .loginId(user.getLoginId())
+            .socialProviderId(user.getSocialProviderId())
+            .socialType(user.getSocialType())
                 .username(user.getUsername())
                 .rememberMe(user.getRememberMe())
                 .accessToken(accessToken)
