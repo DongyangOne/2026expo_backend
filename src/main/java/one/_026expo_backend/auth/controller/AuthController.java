@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
+import one._026expo_backend.auth.dto.response.QrTokenResponse;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
 import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
@@ -17,6 +18,7 @@ import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailService;
+import one._026expo_backend.auth.service.QrService;
 import one._026expo_backend.auth.service.SocialLoginService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
@@ -36,6 +38,7 @@ public class AuthController {
     private final AuthService authService;
     private final EmailService emailService;
     private final SocialLoginService socialLoginService;
+    private final QrService qrService;
 
     /**
      * loginId 중복 체크 API
@@ -144,5 +147,22 @@ public class AuthController {
             @Valid @RequestBody EmailCheckRequestDto dto) {
         EmailCheckResponseDto response = emailService.verifyAuthCode(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * QR 코드 생성용 토큰 발급 API
+     * 본 토큰은 QR 코드의 식별값 및 실시간 통신 채널 Key로 활용
+     *
+     * @return {@link ResponseEntity} 구조에 담긴 QR 토큰 응답 DTO
+     */
+    @Operation(summary = "QR 코드 생성용 토큰 발급", description = "QR 코드용 토큰을 발급하고 Redis 서버에 저장합니다.")
+    @ApiErrorExceptions({ErrorCode.REDIS_CONNECTION_ERROR})
+    @PostMapping("/qr/token")
+    public ResponseEntity<QrTokenResponse> generateQrToken() {
+        // 서비스 레이어를 호출하여 토큰 생성 및 Redis 저장 로직 수행
+        String qrToken = qrService.createQrToken();
+
+        // 최종 DTO에 담아 응답 반환
+        return ResponseEntity.ok(new QrTokenResponse(qrToken));
     }
 }
