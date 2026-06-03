@@ -2,9 +2,11 @@ package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
+import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
 import one._026expo_backend.auth.service.GoogleOAuthClient.GoogleProfile;
+import one._026expo_backend.auth.service.NaverOAuthClient.NaverProfile;
 import one._026expo_backend.auth.service.KakaoOAuthClient.KakaoProfile;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
@@ -27,11 +29,13 @@ import java.util.Date;
 public class SocialLoginService {
     private static final String KAKAO_DEFAULT_USERNAME = "카카오회원";
     private static final String GOOGLE_DEFAULT_USERNAME = "구글회원";
+    private static final String NAVER_DEFAULT_USERNAME = "네이버회원";
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtProvider;
     private final KakaoOAuthClient kakaoOAuthClient;
     private final GoogleOAuthClient googleOAuthClient;
+    private final NaverOAuthClient naverOAuthClient;
 
     /**
      * KAKAO 로그인을 처리한다.
@@ -128,6 +132,54 @@ public class SocialLoginService {
     }
 
     /**
+     * NAVER 로그인을 처리한다.
+     */
+    @Transactional
+    public SocialLoginResponseDto naverLogin(NaverLoginRequestDto requestDto) {
+        NaverProfile naverProfile = naverOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+
+        if (naverProfile.email() == null || naverProfile.email().isBlank()) {
+            throw new BusinessException(ErrorCode.NAVER_EMAIL_REQUIRED);
+        }
+
+        Users user = userRepository.findBySocialTypeAndSocialProviderId(SocialType.NAVER, naverProfile.providerId())
+                .map(existingUser -> {
+                    if (existingUser.getIsDeleted() != UseYnEnum.N) {
+                        throw new BusinessException(ErrorCode.DELETED_USER);
+                    }
+                    return existingUser;
+                })
+                .orElseGet(() -> userRepository.save(Users.builder()
+                        .username(resolveNaverUsername(naverProfile.name()))
+                        .loginId(null)
+                        .password(null)
+                        .email(naverProfile.email())
+                        .emailVerified(UseYnEnum.Y)
+                        .rememberMe(requestDto.getRememberMe())
+                        .termsAgreed(UseYnEnum.Y)
+                        .socialProviderId(naverProfile.providerId())
+                        .socialType(SocialType.NAVER)
+                        .isDeleted(UseYnEnum.N)
+                        .deletedAt(null)
+                        .build()));
+
+        user.updateRememberMe(requestDto.getRememberMe());
+
+        String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
+        String refreshToken = createAndStoreRefreshToken(user, Role.USER);
+
+        return SocialLoginResponseDto.builder()
+                .userId(user.getId())
+                .socialProviderId(user.getSocialProviderId())
+                .socialType(user.getSocialType())
+                .username(user.getUsername())
+                .rememberMe(user.getRememberMe())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    /**
      * 카카오에서 받아온 닉네임을 서버에 저장할 username으로 정리한다.
      * 카카오 로그인/회원가입 처리하는 kakaoLogin() 메소드에서 사용.
      *
@@ -159,6 +211,23 @@ public class SocialLoginService {
         String resolvedName = name.trim();
         if (resolvedName.length() < 2) {
             return GOOGLE_DEFAULT_USERNAME;
+        }
+
+        if (resolvedName.length() > 8) {
+            return resolvedName.substring(0, 8);
+        }
+
+        return resolvedName;
+    }
+
+    private String resolveNaverUsername(String name) {
+        if (name == null || name.isBlank()) {
+            return NAVER_DEFAULT_USERNAME;
+        }
+
+        String resolvedName = name.trim();
+        if (resolvedName.length() < 2) {
+            return NAVER_DEFAULT_USERNAME;
         }
 
         if (resolvedName.length() > 8) {

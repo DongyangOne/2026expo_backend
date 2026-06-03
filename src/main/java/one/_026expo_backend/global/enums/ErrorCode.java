@@ -18,6 +18,8 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.UNAUTHORIZED, "EMAIL_NOT_VERIFIED", "이메일 인증이 완료되지 않았습니다."),
     KAKAO_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "KAKAO_EMAIL_REQUIRED", "카카오 이메일 제공 동의가 필요합니다."),
     KAKAO_LOGIN_FAILED(HttpStatus.BAD_GATEWAY, "KAKAO_LOGIN_FAILED", "카카오 로그인 처리에 실패했습니다."),
+    NAVER_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "NAVER_EMAIL_REQUIRED", "네이버 이메일 제공 동의가 필요합니다."),
+    NAVER_LOGIN_FAILED(HttpStatus.BAD_GATEWAY, "NAVER_LOGIN_FAILED", "네이버 로그인 처리에 실패했습니다."),
     GOOGLE_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "GOOGLE_EMAIL_REQUIRED", "구글 이메일 제공 동의가 필요합니다."),
     GOOGLE_LOGIN_FAILED(HttpStatus.BAD_GATEWAY, "GOOGLE_LOGIN_FAILED", "구글 로그인 처리에 실패했습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다."),
