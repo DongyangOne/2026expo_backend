@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.admin.dto.request.AdminLoginRequestDto;
 import one._026expo_backend.admin.dto.request.AdminSignupRequestDto;
+import one._026expo_backend.admin.dto.response.AdminLoginResponseDto;
 import one._026expo_backend.admin.dto.response.AdminSignupResponseDto;
 import one._026expo_backend.admin.service.AdminService;
 import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
@@ -42,5 +44,17 @@ public class AdminController {
     public ResponseEntity<ApiResponse<ExistsCheckResponseDto>> isExistsAdminId(@RequestParam String adminId) {
         UseYnEnum exists = adminService.isExistsAdminId(adminId);
         return ResponseEntity.ok(ApiResponse.ok(new ExistsCheckResponseDto(exists)));
+    }
+
+    /**
+     *
+     * 관리자 로그인 API
+     */
+    @Operation(summary = "관리자 로그인", description = "관리자가 요청한 정보로 로그인을 진행합니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_CREDENTIALS})
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AdminLoginResponseDto>> login(@Valid @RequestBody AdminLoginRequestDto request) {
+        AdminLoginResponseDto response = adminService.adminLogin(request);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

@@ -2,15 +2,21 @@ package one._026expo_backend.admin.service;
 
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.admin.domain.Admin;
+import one._026expo_backend.admin.dto.request.AdminLoginRequestDto;
 import one._026expo_backend.admin.dto.request.AdminSignupRequestDto;
+import one._026expo_backend.admin.dto.response.AdminLoginResponseDto;
 import one._026expo_backend.admin.dto.response.AdminSignupResponseDto;
 import one._026expo_backend.admin.repository.AdminRepository;
 import one._026expo_backend.global.enums.ErrorCode;
+import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
+import one._026expo_backend.global.security.JwtTokenProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminService {
     private final AdminRepository adminRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * 관리자 회원가입
@@ -47,4 +54,37 @@ public class AdminService {
         }
         return adminRepository.existsByAdminId(adminId) ? UseYnEnum.Y : UseYnEnum.N;
     }
+
+    /**
+     * 관리자 로그인 기능
+     * 매 로그인 시마다
+     *
+     * @param request 로그인 요청 정보를 담고 있는 dto
+     * @return
+     */
+    @Transactional
+    public AdminLoginResponseDto adminLogin(AdminLoginRequestDto request) {
+        // 아이디 조회
+        Admin admin = adminRepository.findByAdminId(request.getAdminLoginId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+
+        // 비밀번호 불일치
+        if(!passwordEncoder.matches(request.getAdminPassword(), admin.getAdminPassword()))
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+
+        String adminAccessToken = jwtTokenProvider.createAccessToken(admin.getId(), Role.ADMIN);
+        String adminRefreshToken = jwtTokenProvider.createRefreshToken(admin.getId(), Role.ADMIN);
+
+        // 리프레시 토큰 교체
+        LocalDateTime expiryDate = LocalDateTime.now().plusDays(7);
+        admin.updateRefreshToken(adminRefreshToken, expiryDate);
+
+        return AdminLoginResponseDto.builder()
+                .adminLoginId(admin.getAdminId())
+                .team(admin.getTeam())
+                .adminAccessToken(adminAccessToken)
+                .adminRefreshToken(adminRefreshToken)
+                .build();
+    }
+
 }
