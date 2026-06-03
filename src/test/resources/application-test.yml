@@ -28,3 +28,7 @@ oauth:
   kakao:
     # oauth.kakao.* 도 운영 env 값을 대체하는 테스트(빌드) 전용 더미값
     client-id: test-kakao-client-id
+  google:
+    # oauth.google.* 운영 env 값을 대체하는 테스트(빌드) 전용 더미값
+    client-id: test-google-client-id
+    client-secret: test-google-client-secret

@@ -18,6 +18,8 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.UNAUTHORIZED, "EMAIL_NOT_VERIFIED", "이메일 인증이 완료되지 않았습니다."),
     KAKAO_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "KAKAO_EMAIL_REQUIRED", "카카오 이메일 제공 동의가 필요합니다."),
     KAKAO_LOGIN_FAILED(HttpStatus.BAD_GATEWAY, "KAKAO_LOGIN_FAILED", "카카오 로그인 처리에 실패했습니다."),
+    GOOGLE_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "GOOGLE_EMAIL_REQUIRED", "구글 이메일 제공 동의가 필요합니다."),
+    GOOGLE_LOGIN_FAILED(HttpStatus.BAD_GATEWAY, "GOOGLE_LOGIN_FAILED", "구글 로그인 처리에 실패했습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "FORBIDDEN", "권한이 없습니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "서버 오류가 발생했습니다."),

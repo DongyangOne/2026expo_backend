@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
+import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
 import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
@@ -87,6 +88,17 @@ public class AuthController {
     @PostMapping("/kakao/login")
     public ResponseEntity<ApiResponse<SocialLoginResponseDto>> kakaoLogin(@Valid @RequestBody KakaoLoginRequestDto requestDto) {
         return ResponseEntity.ok(ApiResponse.ok(socialLoginService.kakaoLogin(requestDto)));
+    }
+
+    /**
+     * GOOGLE 로그인 API
+     */
+    @Operation(summary = "GOOGLE 로그인", description = "구글 인가 코드로 구글 계정을 조회하고, 기존 유저가 없으면 회원가입 후 로그인합니다. <br>" +
+            "인가코드는 \"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={구글CLIENT_ID}&redirect_uri={redirect_uri}&scope=email%20profile\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
+    @ApiErrorExceptions({ErrorCode.GOOGLE_EMAIL_REQUIRED, ErrorCode.GOOGLE_LOGIN_FAILED, ErrorCode.DELETED_USER})
+    @PostMapping("/google/login")
+    public ResponseEntity<ApiResponse<SocialLoginResponseDto>> googleLogin(@Valid @RequestBody GoogleLoginRequestDto requestDto) {
+        return ResponseEntity.ok(ApiResponse.ok(socialLoginService.googleLogin(requestDto)));
     }
 
     /**

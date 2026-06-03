@@ -1,8 +1,10 @@
 package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
+import one._026expo_backend.auth.service.GoogleOAuthClient.GoogleProfile;
 import one._026expo_backend.auth.service.KakaoOAuthClient.KakaoProfile;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
@@ -24,10 +26,12 @@ import java.util.Date;
 @Transactional(readOnly = true)
 public class SocialLoginService {
     private static final String KAKAO_DEFAULT_USERNAME = "카카오회원";
+    private static final String GOOGLE_DEFAULT_USERNAME = "구글회원";
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtProvider;
     private final KakaoOAuthClient kakaoOAuthClient;
+    private final GoogleOAuthClient googleOAuthClient;
 
     /**
      * KAKAO 로그인을 처리한다.
@@ -75,6 +79,55 @@ public class SocialLoginService {
     }
 
     /**
+     * GOOGLE 로그인을 처리한다.
+     * 구글 계정 식별자로 기존 유저를 조회하고, 없으면 신규 회원으로 생성한다.
+     */
+    @Transactional
+    public SocialLoginResponseDto googleLogin(GoogleLoginRequestDto requestDto) {
+        GoogleProfile googleProfile = googleOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+
+        if (googleProfile.email() == null || googleProfile.email().isBlank()) {
+            throw new BusinessException(ErrorCode.GOOGLE_EMAIL_REQUIRED);
+        }
+
+        Users user = userRepository.findBySocialTypeAndSocialProviderId(SocialType.GOOGLE, googleProfile.providerId())
+                .map(existingUser -> {
+                    if (existingUser.getIsDeleted() != UseYnEnum.N) {
+                        throw new BusinessException(ErrorCode.DELETED_USER);
+                    }
+                    return existingUser;
+                })
+                .orElseGet(() -> userRepository.save(Users.builder()
+                        .username(resolveGoogleUsername(googleProfile.name()))
+                        .loginId(null)
+                        .password(null)
+                        .email(googleProfile.email())
+                        .emailVerified(UseYnEnum.Y)
+                        .rememberMe(requestDto.getRememberMe())
+                        .termsAgreed(UseYnEnum.Y)
+                        .socialProviderId(googleProfile.providerId())
+                        .socialType(SocialType.GOOGLE)
+                        .isDeleted(UseYnEnum.N)
+                        .deletedAt(null)
+                        .build()));
+
+        user.updateRememberMe(requestDto.getRememberMe());
+
+        String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
+        String refreshToken = createAndStoreRefreshToken(user, Role.USER);
+
+        return SocialLoginResponseDto.builder()
+                .userId(user.getId())
+                .socialProviderId(user.getSocialProviderId())
+                .socialType(user.getSocialType())
+                .username(user.getUsername())
+                .rememberMe(user.getRememberMe())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    /**
      * 카카오에서 받아온 닉네임을 서버에 저장할 username으로 정리한다.
      * 카카오 로그인/회원가입 처리하는 kakaoLogin() 메소드에서 사용.
      *
@@ -96,6 +149,23 @@ public class SocialLoginService {
         }
 
         return resolvedNickname;
+    }
+
+    private String resolveGoogleUsername(String name) {
+        if (name == null || name.isBlank()) {
+            return GOOGLE_DEFAULT_USERNAME;
+        }
+
+        String resolvedName = name.trim();
+        if (resolvedName.length() < 2) {
+            return GOOGLE_DEFAULT_USERNAME;
+        }
+
+        if (resolvedName.length() > 8) {
+            return resolvedName.substring(0, 8);
+        }
+
+        return resolvedName;
     }
 
     /**
