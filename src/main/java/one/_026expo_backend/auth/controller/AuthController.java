@@ -7,12 +7,10 @@ import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.request.*;
+import one._026expo_backend.auth.dto.response.QrLoginResponseDto;
 import one._026expo_backend.auth.dto.response.QrTokenResponse;
 import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
-import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
-import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
-import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
 import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
@@ -21,6 +19,7 @@ import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailService;
 import one._026expo_backend.auth.service.QrService;
 import one._026expo_backend.auth.service.SocialLoginService;
+import one._026expo_backend.global.config.auth.CurrentUser;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
@@ -194,6 +193,21 @@ public class AuthController {
     }
 
     /**
+     * 모바일 앱에서 QR 로그인을 승인하는 API
+     *
+     * @param request QR 토큰이 담긴 승인 요청
+     * @param userId 모바일 앱에 저장되어있는 사용자 ID
+     * @return 태블릿용 토큰이 포함된 승인 결과
+     */
+    @Operation(summary = "QR 로그인 승인", description = "로그인된 사용자가 QR 토큰을 승인하면 태블릿용 로그인 토큰을 발급하고 SSE로 전달합니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.UNAUTHORIZED, ErrorCode.DELETED_USER, ErrorCode.INVALID_TOKEN})
+    @PostMapping("/qr/login")
+    public ResponseEntity<ApiResponse<QrLoginResponseDto>> approveQrLogin(@Valid @RequestBody QrLoginRequestDto request, @CurrentUser Long userId) {
+        QrLoginResponseDto response = qrService.approveQrLogin(request.getQrToken(), userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
      * 인증 번호 이메일 전송 API
      * @param dto 아이디를 찾고자 하는 사용자의 이메일 주소
      * @return 발송 정보 및 만료 시간
@@ -222,5 +236,4 @@ public class AuthController {
         FindIdResponseDto response = emailService.verifyFindIdAndGetId(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
-
 }
