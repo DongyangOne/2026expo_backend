@@ -15,6 +15,8 @@ import one._026expo_backend.global.security.JwtTokenProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import java.time.Duration;
 
 import java.time.LocalDateTime;
 
@@ -25,6 +27,9 @@ public class AdminService {
     private final AdminRepository adminRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+
+    @Value("${jwt.refresh-expiration}")
+    private Long refreshExpirationMs;
 
     /**
      * 관리자 회원가입
@@ -76,7 +81,7 @@ public class AdminService {
         String adminRefreshToken = jwtTokenProvider.createRefreshToken(admin.getId(), Role.ADMIN);
 
         // 리프레시 토큰 교체
-        LocalDateTime expiryDate = LocalDateTime.now().plusDays(7);
+        LocalDateTime expiryDate = LocalDateTime.now().plus(Duration.ofMillis(refreshExpirationMs));
         admin.updateRefreshToken(adminRefreshToken, expiryDate);
 
         return AdminLoginResponseDto.builder()
@@ -86,5 +91,4 @@ public class AdminService {
                 .adminRefreshToken(adminRefreshToken)
                 .build();
     }
-
 }
