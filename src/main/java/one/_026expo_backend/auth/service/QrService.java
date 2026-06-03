@@ -24,6 +24,9 @@ public class QrService {
     private final StringRedisTemplate redisTemplate;
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>(); // QR 토큰별 SSE 연결 객체를 저장하는 맵 (스레드에서 안전)
 
+    private static final String QR_PREFIX = "qr:";
+    private static final String QR_PENDING = "PENDING";
+
     /**
      * UUID로 QR 생성용 토큰을 생성하고 유효 시간과 함께 Redis에 저장한다.
      * 초기 저장 상태는 대기(PENDING) 상태이며, 3분 후 자동으로 만료된다.
@@ -31,12 +34,12 @@ public class QrService {
     public String createQrToken() {
         String qrToken = UUID.randomUUID().toString(); // UUID로 토큰 생성
 
-        String redisKey = "qr:" + qrToken;// Redis에 저장할 Key 포맷 설정
+        String redisKey = QR_PREFIX + qrToken;// Redis에 저장할 Key 포맷 설정
 
         try {
             // Key=토큰, Value="PENDING"으로 저장, 3분 뒤 삭제하도록 설정
             // 대기 상태(PENDING)로 저장, 앱에서 사용 시(로그인 완료 시) 완료(SUCCESS) 상태로 변경
-            redisTemplate.opsForValue().set(redisKey, "PENDING", Duration.ofMinutes(3));
+            redisTemplate.opsForValue().set(redisKey, QR_PENDING, Duration.ofMinutes(3));
             log.info("Successfully generated QR token and saved to Redis: {}", qrToken);
 
         } catch (RedisConnectionFailureException e) {
@@ -54,7 +57,7 @@ public class QrService {
      * @return 연결되어 만든 {@link SseEmitter} 객체
      */
     public SseEmitter createSseConnection(String qrToken) {
-        String redisKey = "qr:" + qrToken;
+        String redisKey = QR_PREFIX + qrToken;
 
         Boolean hasKey = redisTemplate.hasKey(redisKey);// Redis에 해당 토큰 키가 존재하는지 확인
 
