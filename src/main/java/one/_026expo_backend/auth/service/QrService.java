@@ -42,7 +42,7 @@ public class QrService {
             redisTemplate.opsForValue().set(redisKey, QR_PENDING, Duration.ofMinutes(3));
             log.info("Successfully generated QR token and saved to Redis: {}", qrToken);
 
-        } catch (RedisConnectionFailureException e) {
+        } catch (RedisConnectionFailureException e) { // 백엔드 서버 <-> Redis 서버 연결 실패
             log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
             throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
         }
@@ -58,24 +58,19 @@ public class QrService {
      */
     public SseEmitter createSseConnection(String qrToken) {
         String redisKey = QR_PREFIX + qrToken;
+        Boolean hasKey;
 
-        Boolean hasKey = redisTemplate.hasKey(redisKey);// Redis에 해당 토큰 키가 존재하는지 확인
+        // Redis에 해당 토큰 키가 존재하는지 확인
+        try {
+            hasKey = redisTemplate.hasKey(redisKey);
+        } catch (RedisConnectionFailureException e) { // 백엔드 서버 <-> Redis 서버 연결 실패
+            log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
+            return createAndSendErrorEmitter(qrToken, ErrorCode.REDIS_CONNECTION_ERROR); // 메소드 안에서 에러 응답 공통 규격 처리
+        }
 
-        if (Boolean.FALSE.equals(hasKey)) { // 유효하지 않거나 만료된 토큰
-            // 에러 메시지만 즉시 전송하고 채널을 바로 닫기 위해 수명이 0인 임시 이미터 생성 (메모리 낭비 방지)
-            // 유효하지 않은 토큰이지만, 현 API는 SSE 통로이기 때문에 반환타입을 SseEmitter로 주기 위해 객체를 생성함
-            SseEmitter errorEmitter = new SseEmitter(0L);
-            try {
-                // 공통 규격으로 에러 반환
-                ApiResponse<?> errorResponse = ApiResponse.error(ErrorCode.INVALID_QR_TOKEN);
-
-                // 프론트가 쉽게 인지하도록 이벤트명("ERROR") 지정
-                errorEmitter.send(SseEmitter.event().name("ERROR").data(errorResponse));
-                errorEmitter.complete();
-            } catch (IOException e) {
-                log.error("에러 메시지 전송 실패", e);
-            }
-            return errorEmitter;
+        // 유효하지 않거나 만료된 토큰 검증
+        if (Boolean.FALSE.equals(hasKey)) { // 잘못된 토큰 요청
+            return createAndSendErrorEmitter(qrToken, ErrorCode.INVALID_QR_TOKEN); // 메소드 안에서 에러 응답 공통 규격 처리
         }
 
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L); // 5분 동안 유지되는 연결선 생성
@@ -83,6 +78,7 @@ public class QrService {
         emitters.put(qrToken, emitter); // 메모리 맵에 보관
 
         // 연결선 만료 및 에러 핸들러 세팅
+        // 클라이언트 <-> 백엔드 서버 연결 끊김
         emitter.onCompletion(() -> { // SSE 연결이 정상 종료된 경우
             emitters.remove(qrToken); // 서버 메모리에서 토큰 연결 삭제
         });
@@ -101,12 +97,38 @@ public class QrService {
         try {
             // SSE는 첫 연결 시 더미 데이터를 전송해야 연결이 유지됨
             emitter.send(SseEmitter.event().name("INIT").data(ApiResponse.ok("Connected!")));
-        } catch (IOException e) {
+        } catch (IOException e) { // 클라이언트 <-> 백엔드 서버 연결선 수립 실패
             log.error("토큰에 대한 SSE 초기화 데이터 전송 실패: {}", qrToken);
             emitters.remove(qrToken);
+            // 대답을 수신할 클라이언트가 없는 상태이므로 응답을 보내기 위한 것이 아닌 작업 중지용 에러 처리
+            // 이미 5분 연결선을 만들었기 때문에 정리하기 위함
             throw new BusinessException(ErrorCode.SSE_CONNECTION_ERROR);
         }
 
         return emitter;
+    }
+
+    /**
+     * 에러시 발송할 공통 응답을 위한 임시 이미터 생성 및 전송 로직
+     * * 연결이 유지되어 있을 시 매개변수로 받은 에러를 공통 응답으로 send
+     * * 연결이 끊길 시 백엔드 서버 내에서 로그 처리
+     *
+     * 클라이언트에 정상적으로 에러 응답을 보내면 complete()메소드를 이용해 설정된 수명(0L)에 따라 연결선 정상 종료
+     */
+    private SseEmitter createAndSendErrorEmitter(String qrToken, ErrorCode errorCode) {
+        // 공통 규격을 반환하기 위한 일회용 이미터 생성
+        SseEmitter errorEmitter = new SseEmitter(0L); // 타임아웃 타이머는 try 블록 코드가 끝난 뒤 작동
+        try {
+            // 공통 규격으로 에러 반환
+            ApiResponse<?> errorResponse = ApiResponse.error(errorCode);
+
+            // 프론트가 쉽게 인지하도록 이벤트명("ERROR") 지정
+            errorEmitter.send(SseEmitter.event().name("ERROR").data(errorResponse));
+            errorEmitter.complete();
+        } catch (IOException e) { // 클라이언트 <-> 백엔드 서버 연결 실패
+            // 네트워크 연결이 끊긴 상태이므로 로그만 남김
+            log.warn("연결이 끊어져 에러 메시지 전송 실패. 토큰: {}, 에러: {}", qrToken, errorCode.getMessage());
+        }
+        return errorEmitter;
     }
 }
