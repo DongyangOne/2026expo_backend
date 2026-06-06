@@ -9,6 +9,7 @@ import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
+import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
 import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
 import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
 import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
@@ -99,6 +100,17 @@ public class AuthController {
     @PostMapping("/google/login")
     public ResponseEntity<ApiResponse<SocialLoginResponseDto>> googleLogin(@Valid @RequestBody GoogleLoginRequestDto requestDto) {
         return ResponseEntity.ok(ApiResponse.ok(socialLoginService.googleLogin(requestDto)));
+    }
+
+    /**
+     * NAVER 로그인 API
+     */
+    @Operation(summary = "NAVER 로그인", description = "네이버 인가 코드로 네이버 계정을 조회하고, 기존 유저가 없으면 회원가입 후 로그인합니다. <br>" +
+            "인가코드는 \"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={네이버 CLIENT_ID}&redirect_uri={redirect_uri}&state={앱 STATE 값}\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
+    @ApiErrorExceptions({ErrorCode.NAVER_EMAIL_REQUIRED, ErrorCode.NAVER_LOGIN_FAILED, ErrorCode.DELETED_USER})
+    @PostMapping("/naver/login")
+    public ResponseEntity<ApiResponse<SocialLoginResponseDto>> naverLogin(@Valid @RequestBody NaverLoginRequestDto requestDto) {
+        return ResponseEntity.ok(ApiResponse.ok(socialLoginService.naverLogin(requestDto)));
     }
 
     /**
