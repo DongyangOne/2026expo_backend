@@ -30,8 +30,10 @@ public enum ErrorCode {
     AUTH_CODE_EXPIRED(HttpStatus.GONE, "AUTH_CODE_EXPIRED", "인증 코드가 만료되었습니다."),
     AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_CODE_MISMATCH", "인증 코드가 일치하지 않습니다."),
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_SEND_FAILED", "이메일 발송에 실패했습니다."),
-    TOO_MANY_EMAIL_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_EMAIL_REQUESTS", "이메일 인증 요청이 너무 잦습니다. 1분 후에 다시 시도해 주세요.");
-
+    TOO_MANY_EMAIL_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_EMAIL_REQUESTS", "이메일 인증 요청이 너무 잦습니다. 1분 후에 다시 시도해 주세요."),
+    QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ_NOT_FOUND", "요청하신 퀴즈를 찾을 수가 없습니다."),
+    NOT_ENOUGH_QUIZ(HttpStatus.UNPROCESSABLE_CONTENT, "NOT_ENOUGH_QUIZ", "요청한 개수만큼 퀴즈가 충분하지 않습니다."),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "해당 유저를 찾을 수가 없습니다.");
     private final HttpStatus status;
     private final String code;
     private final String message;
