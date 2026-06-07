@@ -2,9 +2,11 @@ package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
+import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
 import one._026expo_backend.auth.service.GoogleOAuthClient.GoogleProfile;
+import one._026expo_backend.auth.service.NaverOAuthClient.NaverProfile;
 import one._026expo_backend.auth.service.KakaoOAuthClient.KakaoProfile;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
@@ -27,11 +29,13 @@ import java.util.Date;
 public class SocialLoginService {
     private static final String KAKAO_DEFAULT_USERNAME = "카카오회원";
     private static final String GOOGLE_DEFAULT_USERNAME = "구글회원";
+    private static final String NAVER_DEFAULT_USERNAME = "네이버회원";
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtProvider;
     private final KakaoOAuthClient kakaoOAuthClient;
     private final GoogleOAuthClient googleOAuthClient;
+    private final NaverOAuthClient naverOAuthClient;
 
     /**
      * KAKAO 로그인을 처리한다.
@@ -40,42 +44,9 @@ public class SocialLoginService {
     @Transactional
     public SocialLoginResponseDto kakaoLogin(KakaoLoginRequestDto requestDto) {
         KakaoProfile kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+        SocialProfile profile = new SocialProfile(kakaoProfile.providerId(), kakaoProfile.nickname(), kakaoProfile.email());
 
-        Users user = userRepository.findBySocialTypeAndSocialProviderId(SocialType.KAKAO, kakaoProfile.providerId())
-                .map(existingUser -> {
-                    if (existingUser.getIsDeleted() != UseYnEnum.N) {
-                        throw new BusinessException(ErrorCode.DELETED_USER);
-                    }
-                    return existingUser;
-                })
-                .orElseGet(() -> userRepository.save(Users.builder()
-                        .username(resolveKakaoUsername(kakaoProfile.nickname()))
-                        .loginId(null)
-                        .password(null)
-                        .email(kakaoProfile.email())
-                        .emailVerified(UseYnEnum.Y)
-                        .rememberMe(requestDto.getRememberMe())
-                        .termsAgreed(UseYnEnum.Y)
-                        .socialProviderId(kakaoProfile.providerId())
-                        .socialType(SocialType.KAKAO)
-                        .isDeleted(UseYnEnum.N)
-                        .deletedAt(null)
-                        .build()));
-
-        user.updateRememberMe(requestDto.getRememberMe());
-
-        String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
-        String refreshToken = createAndStoreRefreshToken(user, Role.USER);
-
-        return SocialLoginResponseDto.builder()
-                .userId(user.getId())
-            .socialProviderId(user.getSocialProviderId())
-            .socialType(user.getSocialType())
-                .username(user.getUsername())
-                .rememberMe(user.getRememberMe())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        return processSocialLogin(profile, SocialType.KAKAO, KAKAO_DEFAULT_USERNAME, requestDto.getRememberMe());
     }
 
     /**
@@ -85,33 +56,87 @@ public class SocialLoginService {
     @Transactional
     public SocialLoginResponseDto googleLogin(GoogleLoginRequestDto requestDto) {
         GoogleProfile googleProfile = googleOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+        SocialProfile profile = new SocialProfile(googleProfile.providerId(), googleProfile.name(), googleProfile.email());
 
-        if (googleProfile.email() == null || googleProfile.email().isBlank()) {
-            throw new BusinessException(ErrorCode.GOOGLE_EMAIL_REQUIRED);
+        return processSocialLogin(profile, SocialType.GOOGLE, GOOGLE_DEFAULT_USERNAME, requestDto.getRememberMe());
+    }
+
+    /**
+     * NAVER 로그인을 처리한다.
+     */
+    @Transactional
+    public SocialLoginResponseDto naverLogin(NaverLoginRequestDto requestDto) {
+        NaverProfile naverProfile = naverOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+        SocialProfile profile = new SocialProfile(naverProfile.providerId(), naverProfile.name(), naverProfile.email());
+
+        return processSocialLogin(profile, SocialType.NAVER, NAVER_DEFAULT_USERNAME, requestDto.getRememberMe());
+    }
+
+    /**
+     * 소셜 서비스에서 받아온 이름을 서버에 저장할 username으로 정리한다.
+     */
+    private String resolveUsername(String name, String defaultUsername) {
+        if (name == null || name.isBlank()) {
+            return defaultUsername; // 닉네임이 비어있으면 기본값으로 저장
         }
 
-        Users user = userRepository.findBySocialTypeAndSocialProviderId(SocialType.GOOGLE, googleProfile.providerId())
+        String resolvedName = name.trim();
+        if (resolvedName.length() < 2) {
+            return defaultUsername; // 이름이 두 글자 미만인 경우에도 기본값으로 저장
+        }
+
+        if (resolvedName.length() > 8) {
+            return resolvedName.substring(0, 8); // 이름이 8자 초과인 경우 8자까지만 잘라서 저장
+        }
+
+        return resolvedName;
+    }
+
+    private static class SocialProfile {
+        private final String providerId;
+        private final String name;
+        private final String email;
+
+        SocialProfile(String providerId, String name, String email) {
+            this.providerId = providerId;
+            this.name = name;
+            this.email = email;
+        }
+
+        String providerId() { return providerId; }
+        String name() { return name; }
+        String email() { return email; }
+    }
+
+    private SocialLoginResponseDto processSocialLogin(SocialProfile profile, SocialType socialType, String defaultUsername, UseYnEnum rememberMe) {
+        if (profile.email() == null || profile.email().isBlank()) { // 이메일이 없는 경우 예외 처리
+            if (socialType == SocialType.GOOGLE) throw new BusinessException(ErrorCode.GOOGLE_EMAIL_REQUIRED);
+            if (socialType == SocialType.NAVER) throw new BusinessException(ErrorCode.NAVER_EMAIL_REQUIRED);
+            if (socialType == SocialType.KAKAO) throw new BusinessException(ErrorCode.KAKAO_EMAIL_REQUIRED);
+        }
+
+        Users user = userRepository.findBySocialTypeAndSocialProviderId(socialType, profile.providerId())
                 .map(existingUser -> {
-                    if (existingUser.getIsDeleted() != UseYnEnum.N) {
+                    if (existingUser.getIsDeleted() != UseYnEnum.N) { // 삭제된 유저인 경우
                         throw new BusinessException(ErrorCode.DELETED_USER);
                     }
                     return existingUser;
                 })
-                .orElseGet(() -> userRepository.save(Users.builder()
-                        .username(resolveGoogleUsername(googleProfile.name()))
+                .orElseGet(() -> userRepository.save(Users.builder() // 신규 회원으로 저장
+                        .username(resolveUsername(profile.name(), defaultUsername))
                         .loginId(null)
                         .password(null)
-                        .email(googleProfile.email())
+                        .email(profile.email())
                         .emailVerified(UseYnEnum.Y)
-                        .rememberMe(requestDto.getRememberMe())
+                        .rememberMe(rememberMe)
                         .termsAgreed(UseYnEnum.Y)
-                        .socialProviderId(googleProfile.providerId())
-                        .socialType(SocialType.GOOGLE)
+                        .socialProviderId(profile.providerId())
+                        .socialType(socialType)
                         .isDeleted(UseYnEnum.N)
                         .deletedAt(null)
                         .build()));
 
-        user.updateRememberMe(requestDto.getRememberMe());
+        user.updateRememberMe(rememberMe); // 이미 존재하는 경우로 로그인하는 경우 rememberMe 상태 업데이트
 
         String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
         String refreshToken = createAndStoreRefreshToken(user, Role.USER);
@@ -125,47 +150,6 @@ public class SocialLoginService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();
-    }
-
-    /**
-     * 카카오에서 받아온 닉네임을 서버에 저장할 username으로 정리한다.
-     * 카카오 로그인/회원가입 처리하는 kakaoLogin() 메소드에서 사용.
-     *
-     * @param nickname 카카오에서 받아온 닉네임
-     * @return 정리된 username
-     */
-    private String resolveKakaoUsername(String nickname) {
-        if (nickname == null || nickname.isBlank()) { 
-            return KAKAO_DEFAULT_USERNAME;// 닉네임이 비어있으면 기본값 "카카오회원" 으로 저장
-        }
-
-        String resolvedNickname = nickname.trim();
-        if (resolvedNickname.length() < 2) {
-            return KAKAO_DEFAULT_USERNAME; // 이름이 두 글자 미만인 경우에도 "카카오회원" (username 규칙 통일)
-        }
-
-        if (resolvedNickname.length() > 8) {
-            return resolvedNickname.substring(0, 8);// 이름이 8자 초과인 경우 8자까지만 잘라서 저장
-        }
-
-        return resolvedNickname;
-    }
-
-    private String resolveGoogleUsername(String name) {
-        if (name == null || name.isBlank()) {
-            return GOOGLE_DEFAULT_USERNAME;
-        }
-
-        String resolvedName = name.trim();
-        if (resolvedName.length() < 2) {
-            return GOOGLE_DEFAULT_USERNAME;
-        }
-
-        if (resolvedName.length() > 8) {
-            return resolvedName.substring(0, 8);
-        }
-
-        return resolvedName;
     }
 
     /**
