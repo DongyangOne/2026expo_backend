@@ -1,5 +1,6 @@
 package one._026expo_backend.user.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,12 +12,22 @@ import one._026expo_backend.user.domain.Users;
 @Getter
 @Builder
 @AllArgsConstructor
+@Schema(description = "마이페이지 프로필 조회 응답 DTO")
 public class UserProfileResponseDto {
 
+    @Schema(description = "사용자 식별자", example = "1")
     private Long userId;
+
+    @Schema(description = "프로필 이미지 URL", example = "https://cdn.example.com/profile.png", nullable = true)
     private String profileImageUrl;
+
+    @Schema(description = "이름", example = "김민혁")
     private String name;
+
+    @Schema(description = "로그인 아이디", example = "kmh0707")
     private String loginId;
+
+    @Schema(description = "이메일", example = "kmh0707@naver.com")
     private String email;
 
     /**
