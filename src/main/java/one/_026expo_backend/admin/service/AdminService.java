@@ -1,10 +1,15 @@
 package one._026expo_backend.admin.service;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.admin.domain.Admin;
 import one._026expo_backend.admin.dto.request.AdminLoginRequestDto;
+import one._026expo_backend.admin.dto.request.AdminRefreshTokenRequestDto;
 import one._026expo_backend.admin.dto.request.AdminSignupRequestDto;
 import one._026expo_backend.admin.dto.response.AdminLoginResponseDto;
+import one._026expo_backend.admin.dto.response.AdminRefreshTokenResponseDto;
 import one._026expo_backend.admin.dto.response.AdminSignupResponseDto;
 import one._026expo_backend.admin.repository.AdminRepository;
 import one._026expo_backend.global.enums.ErrorCode;
@@ -30,6 +35,8 @@ public class AdminService {
 
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpirationMs;
+
+    String REFRESH = "REFRESH";
 
     /**
      * 관리자 회원가입
@@ -89,6 +96,55 @@ public class AdminService {
                 .team(admin.getTeam())
                 .adminAccessToken(adminAccessToken)
                 .adminRefreshToken(adminRefreshToken)
+                .build();
+    }
+
+    @Transactional
+    public AdminRefreshTokenResponseDto reissueToken(AdminRefreshTokenRequestDto request) {
+        String adminRefreshToken = request.getRefreshToken();
+
+        // 유효성 검증
+        if (adminRefreshToken == null || adminRefreshToken.isBlank())
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+
+        // 토큰 파싱 및 만료/형식 예외 처리
+        Claims claims;
+        try {
+            claims = jwtTokenProvider.parseClaims(adminRefreshToken);
+        } catch (ExpiredJwtException e) {
+            throw new BusinessException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        String tokenType = claims.get("token_type", String.class);
+        if (!REFRESH.equals(tokenType))
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+
+        Role role = Role.valueOf(claims.get("role", String.class));
+        if (role != Role.ADMIN)
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+
+        Long adminId = Long.parseLong(claims.getSubject());
+
+        Admin admin = adminRepository.findById(adminId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
+
+        if (admin.getRefreshToken() == null || !admin.getRefreshToken().equals(adminRefreshToken))
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+
+        if (admin.getRefreshExpiredAt() != null && admin.getRefreshExpiredAt().isBefore(LocalDateTime.now()))
+            throw new BusinessException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+
+        String newAccessToken = jwtTokenProvider.createAccessToken(admin.getId(), role);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(admin.getId(), role);
+
+        LocalDateTime expiryDate = LocalDateTime.now().plus(Duration.ofMillis(refreshExpirationMs));
+        admin.updateRefreshToken(newRefreshToken, expiryDate);
+
+        return AdminRefreshTokenResponseDto.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .build();
     }
 }
