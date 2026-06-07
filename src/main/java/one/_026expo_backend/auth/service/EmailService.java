@@ -113,7 +113,7 @@ public class EmailService {
         }
 
         if (!storedCode.equals(dto.getAuthCode())) {
-            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}, 입력 코드: {}", dto.getEmail(), dto.getAuthCode());
+            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}", dto.getEmail());
             throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
@@ -209,7 +209,7 @@ public class EmailService {
         }
 
         if (!storedCode.equals(dto.getAuthCode())) {
-            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}, 입력 코드: {}", dto.getEmail(), dto.getAuthCode());
+            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}", dto.getEmail());
             throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
@@ -223,7 +223,7 @@ public class EmailService {
 
             log.info("아이디 찾기 검증 완료 - 대상: {}", dto.getEmail());
 
-            return new FindIdResponseDto(user.getLoginId());
+            return new FindIdResponseDto(user.getId(), user.getLoginId());
         } catch (BusinessException e) {
             throw e;
         }
