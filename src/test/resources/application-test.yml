@@ -1,3 +1,5 @@
+# 테스트/빌드 시에는 ${...} 형태의 실제 env 값을 읽지 못함
+# ApplicationContext 부팅용 더미 값을 이 파일에 고정
 spring:
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
@@ -17,18 +19,22 @@ spring:
     show-sql: false
 
 jwt:
+  # jwt.* 는 운영 env 값을 대체하는 테스트(빌드) 전용 더미값
   secret: test-test-test-test-test-test-test-test-test-test-test-test-test-test
   access-expiration: 3600000
   refresh-expiration: 1209600000
 
 oauth:
   kakao:
+    # oauth.kakao.* 도 운영 env 값을 대체하는 테스트(빌드) 전용 더미값
     client-id: test-kakao-client-id
     client-secret: test-kakao-client-secret
   google:
+    # oauth.google.* 도 운영 env 값을 대체하는 테스트(빌드) 전용 더미값
     client-id: test-google-client-id
     client-secret: test-google-client-secret
   naver:
+    # oauth.naver.* 도 운영 env 값을 대체하는 테스트(빌드) 전용 더미값
     client-id: test-naver-client-id
     client-secret: test-naver-client-secret
     state: test-naver-state
