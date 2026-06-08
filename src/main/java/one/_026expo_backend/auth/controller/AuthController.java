@@ -6,12 +6,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
-import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
+import one._026expo_backend.auth.dto.request.*;
+import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
-import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
-import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
-import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
-import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
 import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
@@ -157,4 +154,35 @@ public class AuthController {
         EmailCheckResponseDto response = emailService.verifyAuthCode(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    /**
+     * 인증 번호 이메일 전송 API
+     * @param dto 아이디를 찾고자 하는 사용자의 이메일 주소
+     * @return 발송 정보 및 만료 시간
+     */
+    @Operation(summary = "아이디 찾기 - 인증번호 발송", description = "가입된 이메일인지 확인한 후, 해당 메일 주소로 아이디 찾기용 6자리 인증번호를 발송합니다.")
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.TOO_MANY_EMAIL_REQUESTS, ErrorCode.EMAIL_SEND_FAILED})
+    @PostMapping("/find-id/send")
+    public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendFindId(
+            @Valid @RequestBody FindIdRequestDto dto
+    ) {
+        EmailSendResponseDto response = emailService.sendFindIdEmail(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 이메일 인증 번호 검증 및 ID 반환 API
+     * @param dto 이메일 주소와 사용자가 입력한 인증 번호
+     * @return 검증 성공 시 마스킹 없는 사용자의 오리지널 로그인 ID 반환
+     */
+    @Operation(summary = "아이디 찾기 - 인증번호 검증 및 ID 반환", description = "발송된 6자리 인증번호를 검증하고, 성공 시 해당 이메일로 가입된 유저의 로그인 아이디를 반환합니다.")
+    @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.USER_NOT_FOUND})
+    @PostMapping("/find-id/check")
+    public ResponseEntity<ApiResponse<FindIdResponseDto>> checkFindId(
+            @Valid @RequestBody FindIdCheckRequestDto dto
+    ) {
+        FindIdResponseDto response = emailService.verifyFindIdAndGetId(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
 }
