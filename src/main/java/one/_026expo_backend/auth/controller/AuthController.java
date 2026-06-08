@@ -189,6 +189,8 @@ public class AuthController {
     public SseEmitter connectQrSse(@PathVariable String qrToken) {
         return qrService.createSseConnection(qrToken);
     }
+
+    /**
      * 인증 번호 이메일 전송 API
      * @param dto 아이디를 찾고자 하는 사용자의 이메일 주소
      * @return 발송 정보 및 만료 시간
