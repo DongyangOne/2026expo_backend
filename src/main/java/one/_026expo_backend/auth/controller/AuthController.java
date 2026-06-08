@@ -6,18 +6,17 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
-import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
+import one._026expo_backend.auth.dto.request.*;
+import one._026expo_backend.auth.dto.response.QrTokenResponse;
+import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
-import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
-import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
-import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
-import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
 import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailService;
+import one._026expo_backend.auth.service.QrService;
 import one._026expo_backend.auth.service.SocialLoginService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
@@ -26,8 +25,10 @@ import one._026expo_backend.auth.dto.SignupRequestDto;
 import one._026expo_backend.auth.dto.SignupResponseDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.UseYnEnum;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -37,6 +38,7 @@ public class AuthController {
     private final AuthService authService;
     private final EmailService emailService;
     private final SocialLoginService socialLoginService;
+    private final QrService qrService;
 
     /**
      * loginId 중복 체크 API
@@ -157,4 +159,65 @@ public class AuthController {
         EmailCheckResponseDto response = emailService.verifyAuthCode(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
+
+    /**
+     * QR 코드 생성용 토큰 발급 API
+     * 본 토큰은 QR 코드의 식별값 및 실시간 통신 채널 Key로 활용
+     *
+     * @return {@link ResponseEntity} 구조에 담긴 QR 토큰 응답 DTO
+     */
+    @Operation(summary = "QR 코드 생성용 토큰 발급", description = "QR 코드용 토큰을 발급하고 Redis 서버에 저장합니다.")
+    @ApiErrorExceptions({ErrorCode.REDIS_CONNECTION_ERROR})
+    @PostMapping("/qr/token")
+    public ResponseEntity<QrTokenResponse> createQrToken() {
+        // 서비스 레이어를 호출하여 토큰 생성 및 Redis 저장 로직 수행
+        String qrToken = qrService.createQrToken();
+
+        // 최종 DTO에 담아 응답 반환
+        return ResponseEntity.ok(new QrTokenResponse(qrToken));
+    }
+
+    /**
+     * 태블릿이 발급받은 QR 토큰을 사용한 서버 SSE 수립 API
+     *
+     * @param qrToken 고유 QR 토큰
+     * @return 실시간 스트리밍 연결 유지를 위한 {@link SseEmitter} (Content-Type: text/event-stream)
+     */
+    @Operation(summary = "태블릿 QR 로그인 SSE 수립", description = "발급받은 QR 토큰을 기반으로 서버와 끊어지지 않는 실시간 통신 채널을 개설합니다. 앱에서 인증 완료 시 이 채널을 통해 로그인 토큰이 발송됩니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.SSE_CONNECTION_ERROR})
+    @GetMapping(value = "/qr/connect/{qrToken}", produces = MediaType.TEXT_EVENT_STREAM_VALUE) // produces = MediaType.TEXT_EVENT_STREAM_VALUE로 SSE 사용 선언
+    public SseEmitter connectQrSse(@PathVariable String qrToken) {
+        return qrService.createSseConnection(qrToken);
+    }
+
+    /**
+     * 인증 번호 이메일 전송 API
+     * @param dto 아이디를 찾고자 하는 사용자의 이메일 주소
+     * @return 발송 정보 및 만료 시간
+     */
+    @Operation(summary = "아이디 찾기 - 인증번호 발송", description = "가입된 이메일인지 확인한 후, 해당 메일 주소로 아이디 찾기용 6자리 인증번호를 발송합니다.")
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.TOO_MANY_EMAIL_REQUESTS, ErrorCode.EMAIL_SEND_FAILED})
+    @PostMapping("/find-id/send")
+    public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendFindId(
+            @Valid @RequestBody FindIdRequestDto dto
+    ) {
+        EmailSendResponseDto response = emailService.sendFindIdEmail(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 이메일 인증 번호 검증 및 ID 반환 API
+     * @param dto 이메일 주소와 사용자가 입력한 인증 번호
+     * @return 검증 성공 시 마스킹 없는 사용자의 오리지널 로그인 ID 반환
+     */
+    @Operation(summary = "아이디 찾기 - 인증번호 검증 및 ID 반환", description = "발송된 6자리 인증번호를 검증하고, 성공 시 해당 이메일로 가입된 유저의 로그인 아이디를 반환합니다.")
+    @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.USER_NOT_FOUND})
+    @PostMapping("/find-id/check")
+    public ResponseEntity<ApiResponse<FindIdResponseDto>> checkFindId(
+            @Valid @RequestBody FindIdCheckRequestDto dto
+    ) {
+        FindIdResponseDto response = emailService.verifyFindIdAndGetId(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
 }
