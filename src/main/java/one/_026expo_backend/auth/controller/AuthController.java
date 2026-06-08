@@ -196,8 +196,8 @@ public class AuthController {
      * 모바일 앱에서 QR 로그인을 승인하는 API
      *
      * @param request QR 토큰이 담긴 승인 요청
-     * @param userId 모바일 앱에 저장되어있는 사용자 ID
-     * @return 태블릿용 토큰이 포함된 승인 결과
+     * @param userId 모바일 앱(Access Token)에 저장되어있는 사용자 ID
+     * @return 태블릿용 토큰이 포함된 로그인 정보
      */
     @Operation(summary = "QR 로그인 승인", description = "로그인된 사용자가 QR 토큰을 승인하면 태블릿용 로그인 토큰을 발급하고 SSE로 전달합니다.")
     @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.UNAUTHORIZED, ErrorCode.DELETED_USER, ErrorCode.INVALID_TOKEN})

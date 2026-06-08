@@ -37,6 +37,7 @@ public class QrService {
 
     private static final String QR_PREFIX = "qr:";
     private static final String QR_PENDING = "PENDING";
+    private static final String REFRESH_TOKEN_PREFIX = "refreshToken:tablet:";
 
     /**
      * UUID로 QR 생성용 토큰을 생성하고 유효 시간과 함께 Redis에 저장한다.
@@ -167,30 +168,29 @@ public class QrService {
 
         // QR 토큰 상태 확인
         String status = redisTemplate.opsForValue().get(redisKey);
-        if (status == null || !status.equals(QR_PENDING)) { // 대기 상태가 아니거나 상태가 비어있는 경우
+        if (status == null || !status.equals(QR_PENDING)) { // Redis에서 대기 상태가 아니거나 상태가 비어있는 경우
             throw new BusinessException(ErrorCode.INVALID_QR_TOKEN);
         }
+
+        // 사용한 혹은 검증이 완료된 QR 토큰은 다음 단계 진행 전 즉시 삭제하여 중복 승인 방지
+        redisTemplate.delete(redisKey);
 
         // 태블릿용 토큰 발급
         String tabletAccessToken = jwtProvider.createAccessToken(userId, Role.USER);
         String tabletRefreshToken = jwtProvider.createRefreshToken(userId, Role.USER);
 
-        // RefreshToken 만료 시간 계산
-        Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(tabletRefreshToken);
-        Duration refreshTokenTtl = Duration.ofMinutes(30);
-        if (refreshTokenExpiration != null) {
-            long ttlMillis = refreshTokenExpiration.getTime() - System.currentTimeMillis();
-            if (ttlMillis > 0) {
-                refreshTokenTtl = Duration.ofMillis(ttlMillis);
-            }
-        }
+        // tabletRefreshToken 만료 시간 계산
+        Duration refreshTokenTtl = calculateRefreshTokenTtl(tabletRefreshToken);
 
-        // 태블릿 RefreshToken 저장
-        String tabletRefreshKey = "refreshToken:tablet:" + userId;
+        // 태블릿 RefreshToken을 Redis에 저장
+        String tabletRefreshKey = REFRESH_TOKEN_PREFIX + userId;
         redisTemplate.opsForValue().set(tabletRefreshKey, tabletRefreshToken, refreshTokenTtl);
 
         // SSE 전송용 응답 생성
-        QrLoginResponseDto tokenResponse = QrLoginResponseDto.builder()
+        QrLoginResponseDto loginResponse = QrLoginResponseDto.builder()
+                .userId(user.getId())
+                .loginId(user.getLoginId())
+                .username(user.getUsername())
                 .accessToken(tabletAccessToken)
                 .refreshToken(tabletRefreshToken)
                 .build();
@@ -203,7 +203,7 @@ public class QrService {
                 // 태블릿에 성공 이벤트 전송
                 tabletEmitter.send(SseEmitter.event()
                         .name(QR_SUCCESS_EVENT)
-                        .data(ApiResponse.ok(tokenResponse)));
+                        .data(ApiResponse.ok(loginResponse)));
 
                 // SSE 연결 종료
                 tabletEmitter.complete();
@@ -217,9 +217,26 @@ public class QrService {
             log.warn("토큰은 유효하나 연결된 태블릿의 SSE 이미터를 찾을 수 없음(이미 브라우저를 닫았거나 만료됨) qrToken: {}", qrToken);
         }
 
-        // 사용한 QR 토큰 삭제
-        redisTemplate.delete(redisKey);
+        return loginResponse;
+    }
 
-        return tokenResponse;
+    /**
+     * RefreshToken의 유효 기간을 계산하는 메서드
+     */
+    private Duration calculateRefreshTokenTtl(String tabletRefreshToken) {
+        Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(tabletRefreshToken);
+        Duration defaultTtl = Duration.ofHours(1); // 기본 시간(1시간) 설정
+
+        if (refreshTokenExpiration != null) { // 만료 날짜가 null이 아니라면
+            long ttlMillis = refreshTokenExpiration.getTime() - System.currentTimeMillis(); // 남은 시간 구함
+            if (ttlMillis > 0) {
+                // refreshToken의 남은 시간 반환
+                return Duration.ofMillis(ttlMillis);
+            }
+        }
+
+        // RefreshToken 남은 시간을 못 찾았을 경우 기본 시간(1시간)으로 설정
+        // Redis에 저장되더라도 올바르지 않은 토큰이므로 보안 위험 없음
+        return defaultTtl;
     }
 }
