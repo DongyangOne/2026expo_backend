@@ -8,7 +8,7 @@ import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.request.*;
 import one._026expo_backend.auth.dto.response.QrLoginResponseDto;
-import one._026expo_backend.auth.dto.response.QrTokenResponse;
+import one._026expo_backend.auth.dto.response.QrTokenResponseDto;
 import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
@@ -171,12 +171,12 @@ public class AuthController {
     @Operation(summary = "QR 코드 생성용 토큰 발급", description = "QR 코드용 토큰을 발급하고 Redis 서버에 저장합니다.")
     @ApiErrorExceptions({ErrorCode.REDIS_CONNECTION_ERROR})
     @PostMapping("/qr/token")
-    public ResponseEntity<QrTokenResponse> createQrToken() {
+    public ResponseEntity<QrTokenResponseDto> createQrToken() {
         // 서비스 레이어를 호출하여 토큰 생성 및 Redis 저장 로직 수행
         String qrToken = qrService.createQrToken();
 
         // 최종 DTO에 담아 응답 반환
-        return ResponseEntity.ok(new QrTokenResponse(qrToken));
+        return ResponseEntity.ok(new QrTokenResponseDto(qrToken));
     }
 
     /**
