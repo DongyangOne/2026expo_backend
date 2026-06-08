@@ -76,4 +76,8 @@ public class Users extends BaseEntity {
         this.refreshToken = refreshToken;
         this.refreshExpiredAt = refreshExpiredAt;
     }
+
+    public void changePassword(String newPassword) {
+        this.password = newPassword;
+    }
 }
