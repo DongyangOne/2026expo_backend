@@ -18,6 +18,8 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.UNAUTHORIZED, "EMAIL_NOT_VERIFIED", "이메일 인증이 완료되지 않았습니다."),
     KAKAO_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "KAKAO_EMAIL_REQUIRED", "카카오 이메일 제공 동의가 필요합니다."),
     KAKAO_LOGIN_FAILED(HttpStatus.BAD_GATEWAY, "KAKAO_LOGIN_FAILED", "카카오 로그인 처리에 실패했습니다."),
+    NAVER_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "NAVER_EMAIL_REQUIRED", "네이버 이메일 제공 동의가 필요합니다."),
+    NAVER_LOGIN_FAILED(HttpStatus.BAD_GATEWAY, "NAVER_LOGIN_FAILED", "네이버 로그인 처리에 실패했습니다."),
     GOOGLE_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "GOOGLE_EMAIL_REQUIRED", "구글 이메일 제공 동의가 필요합니다."),
     GOOGLE_LOGIN_FAILED(HttpStatus.BAD_GATEWAY, "GOOGLE_LOGIN_FAILED", "구글 로그인 처리에 실패했습니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다."),
@@ -33,7 +35,9 @@ public enum ErrorCode {
     AUTH_CODE_EXPIRED(HttpStatus.GONE, "AUTH_CODE_EXPIRED", "인증 코드가 만료되었습니다."),
     AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_CODE_MISMATCH", "인증 코드가 일치하지 않습니다."),
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_SEND_FAILED", "이메일 발송에 실패했습니다."),
-    TOO_MANY_EMAIL_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_EMAIL_REQUESTS", "이메일 인증 요청이 너무 잦습니다. 1분 후에 다시 시도해 주세요.");
+    TOO_MANY_EMAIL_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_EMAIL_REQUESTS", "이메일 인증 요청이 너무 잦습니다. 1분 후에 다시 시도해 주세요."),
+    DELETED_ADMIN(HttpStatus.UNAUTHORIZED, "DELETED_ADMIN", "탈퇴한 관리자입니다."),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;

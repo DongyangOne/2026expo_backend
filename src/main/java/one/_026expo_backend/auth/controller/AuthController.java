@@ -6,12 +6,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
-import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
+import one._026expo_backend.auth.dto.request.*;
 import one._026expo_backend.auth.dto.response.QrTokenResponse;
+import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
-import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
-import one._026expo_backend.auth.dto.request.EmailCheckRequestDto;
-import one._026expo_backend.auth.dto.request.EmailSendRequestDto;
 import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
@@ -107,6 +105,17 @@ public class AuthController {
     }
 
     /**
+     * NAVER 로그인 API
+     */
+    @Operation(summary = "NAVER 로그인", description = "네이버 인가 코드로 네이버 계정을 조회하고, 기존 유저가 없으면 회원가입 후 로그인합니다. <br>" +
+            "인가코드는 \"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={네이버 CLIENT_ID}&redirect_uri={redirect_uri}&state={앱 STATE 값}\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
+    @ApiErrorExceptions({ErrorCode.NAVER_EMAIL_REQUIRED, ErrorCode.NAVER_LOGIN_FAILED, ErrorCode.DELETED_USER})
+    @PostMapping("/naver/login")
+    public ResponseEntity<ApiResponse<SocialLoginResponseDto>> naverLogin(@Valid @RequestBody NaverLoginRequestDto requestDto) {
+        return ResponseEntity.ok(ApiResponse.ok(socialLoginService.naverLogin(requestDto)));
+    }
+
+    /**
      * 회원가입 이메일 인증번호 발송 API
      */
     @Operation(summary = "이메일 인증번호 발송", description = "입력한 이메일로 회원가입용 6자리 인증번호를 발송합니다.")
@@ -179,6 +188,34 @@ public class AuthController {
     @GetMapping(value = "/qr/connect/{qrToken}", produces = MediaType.TEXT_EVENT_STREAM_VALUE) // produces = MediaType.TEXT_EVENT_STREAM_VALUE로 SSE 사용 선언
     public SseEmitter connectQrSse(@PathVariable String qrToken) {
         return qrService.createSseConnection(qrToken);
+    }
+     * 인증 번호 이메일 전송 API
+     * @param dto 아이디를 찾고자 하는 사용자의 이메일 주소
+     * @return 발송 정보 및 만료 시간
+     */
+    @Operation(summary = "아이디 찾기 - 인증번호 발송", description = "가입된 이메일인지 확인한 후, 해당 메일 주소로 아이디 찾기용 6자리 인증번호를 발송합니다.")
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.TOO_MANY_EMAIL_REQUESTS, ErrorCode.EMAIL_SEND_FAILED})
+    @PostMapping("/find-id/send")
+    public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendFindId(
+            @Valid @RequestBody FindIdRequestDto dto
+    ) {
+        EmailSendResponseDto response = emailService.sendFindIdEmail(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 이메일 인증 번호 검증 및 ID 반환 API
+     * @param dto 이메일 주소와 사용자가 입력한 인증 번호
+     * @return 검증 성공 시 마스킹 없는 사용자의 오리지널 로그인 ID 반환
+     */
+    @Operation(summary = "아이디 찾기 - 인증번호 검증 및 ID 반환", description = "발송된 6자리 인증번호를 검증하고, 성공 시 해당 이메일로 가입된 유저의 로그인 아이디를 반환합니다.")
+    @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.USER_NOT_FOUND})
+    @PostMapping("/find-id/check")
+    public ResponseEntity<ApiResponse<FindIdResponseDto>> checkFindId(
+            @Valid @RequestBody FindIdCheckRequestDto dto
+    ) {
+        FindIdResponseDto response = emailService.verifyFindIdAndGetId(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
 }
