@@ -16,7 +16,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update          #초기에만 update로 설정, 이후에는 validate로 변경하여 스키마 변경 방지
+      ddl-auto: update       #초기에만 update로 설정, 이후에는 validate로 변경하여 스키마 변경 방지
     show-sql: true
 
   mail:

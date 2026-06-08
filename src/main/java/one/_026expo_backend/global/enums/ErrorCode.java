@@ -33,7 +33,10 @@ public enum ErrorCode {
     AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_CODE_MISMATCH", "인증 코드가 일치하지 않습니다."),
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_SEND_FAILED", "이메일 발송에 실패했습니다."),
     TOO_MANY_EMAIL_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_EMAIL_REQUESTS", "이메일 인증 요청이 너무 잦습니다. 1분 후에 다시 시도해 주세요."),
-    DELETED_ADMIN(HttpStatus.UNAUTHORIZED, "DELETED_ADMIN", "탈퇴한 관리자입니다.");
+    DELETED_ADMIN(HttpStatus.UNAUTHORIZED, "DELETED_ADMIN", "탈퇴한 관리자입니다."),
+    QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ_NOT_FOUND", "요청하신 퀴즈를 찾을 수가 없습니다."),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "해당 유저를 찾을 수가 없습니다."),
+    INVALID_QUIZ_ANSWER(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_ANSWER", "잘못된 형식의 정답을 입력하셨습니다.");
 
     private final HttpStatus status;
     private final String code;

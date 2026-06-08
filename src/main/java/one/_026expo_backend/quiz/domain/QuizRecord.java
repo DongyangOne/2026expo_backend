@@ -1,9 +1,7 @@
 package one._026expo_backend.quiz.domain;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.quiz.enums.QuizAnswer;
 import one._026expo_backend.user.domain.Users;
@@ -14,6 +12,8 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "quiz_records")
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class QuizRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +33,7 @@ public class QuizRecord {
     private QuizAnswer selectedAnswer;
 
     @Column(name = "is_correct", nullable = false, columnDefinition = "ENUM('Y','N')")
-    private UseYnEnum isCorrect= UseYnEnum.N;
+    private UseYnEnum isCorrect;
 
     @Column(name = "earned_point", nullable = false)
     private Integer earnedPoint;

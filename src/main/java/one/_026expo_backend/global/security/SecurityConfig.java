@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/user/signup").permitAll()
                         .requestMatchers("/api/v1/user/exists").permitAll()
+                        .requestMatchers("/api/v1/quiz/**").authenticated()
                         .requestMatchers("/api/v1/admin/**").permitAll()
                         .anyRequest().authenticated()
                 )
