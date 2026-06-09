@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.request.*;
+import one._026expo_backend.auth.dto.response.*;
 import one._026expo_backend.auth.dto.response.QrLoginResponseDto;
 import one._026expo_backend.auth.dto.response.QrTokenResponseDto;
 import one._026expo_backend.auth.dto.response.FindIdResponseDto;
@@ -235,5 +236,53 @@ public class AuthController {
     ) {
         FindIdResponseDto response = emailService.verifyFindIdAndGetId(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+  
+    /**
+     * 비밀범호 찾기(재설정)를 위해 이메일로 인증 코드를 전송하는 API
+     *
+     * @param dto 비밀번호를 변경하고자 하는 사용자의 아이디와 비밀번호
+     *
+     */
+    @Operation(summary = "비밀번호 찾기(재설정) - 인증번호 발송", description = "가입된 사용자인지 확인한 후, 해당 메일 주소로 비밀번호 찾기(재생성)용 6자리 인증번호를 발송합니다.")
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.TOO_MANY_EMAIL_REQUESTS, ErrorCode.EMAIL_SEND_FAILED})
+    @PostMapping("/find-password/send")
+    public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendFindPassword(
+            @Valid @RequestBody FindPasswordRequestDto dto
+    ) {
+        EmailSendResponseDto response = emailService.sendFindPasswordEmail(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 인증 코드 검증 및 비밀번호 찾기(재설정)를 위한 임시 권한 토큰 발급 API
+     *
+     * @param dto 비밀번호를 변경하려는 사용자의 아이디, 이메일, 인증 코드 정보
+     */
+    @Operation(summary = "비밀번호 찾기(재설정) - 인증번호 검증 및 임시 권한 토큰 발급",
+            description = "발송된 6자리 인증번호를 검증하고, 성공 시 비밀번호 변경을 위한 임시 권한 토큰을 발급합니다.")
+    @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.USER_NOT_FOUND})
+    @PostMapping("/find-password/check")
+    public ResponseEntity<ApiResponse<ResetTokenResponseDto>> checkFindPassword(
+            @Valid @RequestBody FindPasswordCheckRequestDto dto
+    ) {
+        ResetTokenResponseDto response = emailService.verifyFindPasswordAndGetToken(dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 사용자의 비밀번호를 변경하는 API
+     *
+     * @param dto 발급받은 임시 권한 토큰과 새로운 비밀번호
+     */
+    @Operation(summary = "비밀번호 찾기(재설정) - 비밀번호 변경",
+            description = "발급한 임시 권한 토큰을 검증하고, 입력받은 새로운 비밀번호를 암호화하여 변경합니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_TOKEN, ErrorCode.USER_NOT_FOUND})
+    @PostMapping("find-password/reset")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody PasswordResetRequestDto dto
+    ) {
+        emailService.updatePassword(dto);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }
