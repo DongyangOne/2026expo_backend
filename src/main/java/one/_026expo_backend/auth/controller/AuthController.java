@@ -8,11 +8,19 @@ import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.request.*;
 import one._026expo_backend.auth.dto.response.*;
+import one._026expo_backend.auth.dto.response.QrLoginResponseDto;
+import one._026expo_backend.auth.dto.response.QrTokenResponseDto;
+import one._026expo_backend.auth.dto.response.FindIdResponseDto;
+import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
+import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
+import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailService;
+import one._026expo_backend.auth.service.QrService;
 import one._026expo_backend.auth.service.SocialLoginService;
+import one._026expo_backend.global.config.auth.CurrentUser;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
@@ -20,8 +28,10 @@ import one._026expo_backend.auth.dto.SignupRequestDto;
 import one._026expo_backend.auth.dto.SignupResponseDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.UseYnEnum;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -31,6 +41,7 @@ public class AuthController {
     private final AuthService authService;
     private final EmailService emailService;
     private final SocialLoginService socialLoginService;
+    private final QrService qrService;
 
     /**
      * loginId 중복 체크 API
@@ -153,6 +164,51 @@ public class AuthController {
     }
 
     /**
+     * QR 코드 생성용 토큰 발급 API
+     * 본 토큰은 QR 코드의 식별값 및 실시간 통신 채널 Key로 활용
+     *
+     * @return {@link ResponseEntity} 구조에 담긴 QR 토큰 응답 DTO
+     */
+    @Operation(summary = "QR 코드 생성용 토큰 발급", description = "QR 코드용 토큰을 발급하고 Redis 서버에 저장합니다.")
+    @ApiErrorExceptions({ErrorCode.REDIS_CONNECTION_ERROR})
+    @PostMapping("/qr/token")
+    public ResponseEntity<QrTokenResponseDto> createQrToken() {
+        // 서비스 레이어를 호출하여 토큰 생성 및 Redis 저장 로직 수행
+        String qrToken = qrService.createQrToken();
+
+        // 최종 DTO에 담아 응답 반환
+        return ResponseEntity.ok(new QrTokenResponseDto(qrToken));
+    }
+
+    /**
+     * 태블릿이 발급받은 QR 토큰을 사용한 서버 SSE 수립 API
+     *
+     * @param qrToken 고유 QR 토큰
+     * @return 실시간 스트리밍 연결 유지를 위한 {@link SseEmitter} (Content-Type: text/event-stream)
+     */
+    @Operation(summary = "태블릿 QR 로그인 SSE 수립", description = "발급받은 QR 토큰을 기반으로 서버와 끊어지지 않는 실시간 통신 채널을 개설합니다. 앱에서 인증 완료 시 이 채널을 통해 로그인 토큰이 발송됩니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.SSE_CONNECTION_ERROR})
+    @GetMapping(value = "/qr/connect/{qrToken}", produces = MediaType.TEXT_EVENT_STREAM_VALUE) // produces = MediaType.TEXT_EVENT_STREAM_VALUE로 SSE 사용 선언
+    public SseEmitter connectQrSse(@PathVariable String qrToken) {
+        return qrService.createSseConnection(qrToken);
+    }
+
+    /**
+     * 모바일 앱에서 QR 로그인을 승인하는 API
+     *
+     * @param request QR 토큰이 담긴 승인 요청
+     * @param userId 모바일 앱(Access Token)에 저장되어있는 사용자 ID
+     * @return 태블릿용 토큰이 포함된 로그인 정보
+     */
+    @Operation(summary = "QR 로그인 승인", description = "로그인된 사용자가 QR 토큰을 승인하면 태블릿용 로그인 토큰을 발급하고 SSE로 전달합니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.UNAUTHORIZED, ErrorCode.DELETED_USER, ErrorCode.INVALID_TOKEN})
+    @PostMapping("/qr/login")
+    public ResponseEntity<ApiResponse<QrLoginResponseDto>> approveQrLogin(@Valid @RequestBody QrLoginRequestDto request, @CurrentUser Long userId) {
+        QrLoginResponseDto response = qrService.approveQrLogin(request.getQrToken(), userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
      * 인증 번호 이메일 전송 API
      * @param dto 아이디를 찾고자 하는 사용자의 이메일 주소
      * @return 발송 정보 및 만료 시간
@@ -181,7 +237,7 @@ public class AuthController {
         FindIdResponseDto response = emailService.verifyFindIdAndGetId(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
-
+  
     /**
      * 비밀범호 찾기(재설정)를 위해 이메일로 인증 코드를 전송하는 API
      *
