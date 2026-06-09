@@ -1,17 +1,18 @@
 package one._026expo_backend.admin.domain;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import one._026expo_backend.global.entity.BaseEntity;
 
 import java.time.LocalDateTime;
 
+@Builder
 @Entity
 @Getter
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "admin")
-public class Admin {
+public class Admin extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -26,6 +27,14 @@ public class Admin {
     @Column(name = "team", nullable = false, length = 50)
     private String team;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "refresh_token")
+    private String refreshToken;
+
+    @Column(name = "refresh_expired_at")
+    private LocalDateTime refreshExpiredAt;
+
+    public void updateRefreshToken(String refreshToken, LocalDateTime refreshExpiredAt) {
+        this.refreshToken = refreshToken;
+        this.refreshExpiredAt = refreshExpiredAt;
+    }
 }

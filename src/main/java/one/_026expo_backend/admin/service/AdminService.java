@@ -1,13 +1,150 @@
 package one._026expo_backend.admin.service;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.admin.domain.Admin;
+import one._026expo_backend.admin.dto.request.AdminLoginRequestDto;
+import one._026expo_backend.admin.dto.request.AdminRefreshTokenRequestDto;
+import one._026expo_backend.admin.dto.request.AdminSignupRequestDto;
+import one._026expo_backend.admin.dto.response.AdminLoginResponseDto;
+import one._026expo_backend.admin.dto.response.AdminRefreshTokenResponseDto;
+import one._026expo_backend.admin.dto.response.AdminSignupResponseDto;
 import one._026expo_backend.admin.repository.AdminRepository;
+import one._026expo_backend.global.enums.ErrorCode;
+import one._026expo_backend.global.enums.Role;
+import one._026expo_backend.global.enums.UseYnEnum;
+import one._026expo_backend.global.exception.BusinessException;
+import one._026expo_backend.global.security.JwtTokenProvider;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import java.time.Duration;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AdminService {
     private final AdminRepository adminRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
+
+    @Value("${jwt.refresh-expiration}")
+    private Long refreshExpirationMs;
+
+    String REFRESH = "REFRESH";
+
+    /**
+     * 관리자 회원가입
+     */
+    @Transactional
+    public AdminSignupResponseDto adminSignup(AdminSignupRequestDto request) {
+        if (adminRepository.existsByAdminId(request.getAdminId())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_USER);
+        }
+        String hashed = passwordEncoder.encode(request.getAdminPassword());
+        Admin admin = request.toEntity(hashed);
+        Admin savedAdmin = adminRepository.save(admin);
+
+        return AdminSignupResponseDto.builder()
+                .adminId(savedAdmin.getAdminId())
+                .team(savedAdmin.getTeam())
+                .createdDate(savedAdmin.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * 관리자 아이디 중복 체크
+     */
+    public UseYnEnum isExistsAdminId(String adminId) {
+        if (adminId == null || adminId.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_LOGIN_ID);
+        }
+        return adminRepository.existsByAdminId(adminId) ? UseYnEnum.Y : UseYnEnum.N;
+    }
+
+    /**
+     * 관리자 로그인 기능
+     * 매 로그인 시마다
+     *
+     * @param request 로그인 요청 정보를 담고 있는 dto
+     * @return
+     */
+    @Transactional
+    public AdminLoginResponseDto adminLogin(AdminLoginRequestDto request) {
+        // 아이디 조회
+        Admin admin = adminRepository.findByAdminId(request.getAdminLoginId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+
+        // 비밀번호 불일치
+        if(!passwordEncoder.matches(request.getAdminPassword(), admin.getAdminPassword()))
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+
+        String adminAccessToken = jwtTokenProvider.createAccessToken(admin.getId(), Role.ADMIN);
+        String adminRefreshToken = jwtTokenProvider.createRefreshToken(admin.getId(), Role.ADMIN);
+
+        // 리프레시 토큰 교체
+        LocalDateTime expiryDate = LocalDateTime.now().plus(Duration.ofMillis(refreshExpirationMs));
+        admin.updateRefreshToken(adminRefreshToken, expiryDate);
+
+        return AdminLoginResponseDto.builder()
+                .adminLoginId(admin.getAdminId())
+                .team(admin.getTeam())
+                .adminAccessToken(adminAccessToken)
+                .adminRefreshToken(adminRefreshToken)
+                .build();
+    }
+
+    @Transactional
+    public AdminRefreshTokenResponseDto reissueToken(AdminRefreshTokenRequestDto request) {
+        String adminRefreshToken = request.getRefreshToken();
+
+        // 유효성 검증
+        if (adminRefreshToken == null || adminRefreshToken.isBlank())
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+
+        // 토큰 파싱 및 만료/형식 예외 처리
+        Claims claims;
+        try {
+            claims = jwtTokenProvider.parseClaims(adminRefreshToken);
+        } catch (ExpiredJwtException e) {
+            throw new BusinessException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        String tokenType = claims.get("token_type", String.class);
+        if (!REFRESH.equals(tokenType))
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+
+        Role role = Role.valueOf(claims.get("role", String.class));
+        if (role != Role.ADMIN)
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+
+        Long adminId = Long.parseLong(claims.getSubject());
+
+        Admin admin = adminRepository.findById(adminId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
+
+        if (admin.getRefreshToken() == null || !admin.getRefreshToken().equals(adminRefreshToken))
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+
+        if (admin.getRefreshExpiredAt() != null && admin.getRefreshExpiredAt().isBefore(LocalDateTime.now()))
+            throw new BusinessException(ErrorCode.EXPIRED_REFRESH_TOKEN);
+
+        String newAccessToken = jwtTokenProvider.createAccessToken(admin.getId(), role);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(admin.getId(), role);
+
+        LocalDateTime expiryDate = LocalDateTime.now().plus(Duration.ofMillis(refreshExpirationMs));
+        admin.updateRefreshToken(newRefreshToken, expiryDate);
+
+        return AdminRefreshTokenResponseDto.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .build();
+    }
 }

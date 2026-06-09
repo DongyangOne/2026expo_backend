@@ -61,4 +61,19 @@ public class Users extends BaseEntity {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @Column(name = "refresh_token", length = 512)
+    private String refreshToken;
+
+    @Column(name = "refresh_expired_at")
+    private LocalDateTime refreshExpiredAt;
+
+    public void updateRememberMe(UseYnEnum rememberMe) {
+        this.rememberMe = rememberMe;
+    }
+
+    public void updateRefreshToken(String refreshToken, LocalDateTime refreshExpiredAt) {
+        this.refreshToken = refreshToken;
+        this.refreshExpiredAt = refreshExpiredAt;
+    }
 }
