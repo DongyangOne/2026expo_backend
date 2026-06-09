@@ -87,38 +87,18 @@ public class EmailService {
      * @throws BusinessException 인증 코드가 만료되었거나 일치하지 않는 경우 발생
      */
     public EmailCheckResponseDto verifyAuthCode(EmailCheckRequestDto dto) {
-        String authKey = REDIS_PREFIX + dto.getEmail();
-        String storedCode = redisTemplate.opsForValue().get(authKey);
+        validateAndDeleteAuthCode(dto.getEmail(), dto.getAuthCode());
 
-        if (storedCode == null) {
-            log.warn("이메일 인증 실패 (코드 만료 혹은 이력 없음) - 대상: {}", dto.getEmail());
-            throw new BusinessException(ErrorCode.AUTH_CODE_EXPIRED);
-        }
+        // 인증된 이메일이라는 정보만 저장
+        String verifiedKey = VERIFIED_PREFIX + dto.getEmail();
+        redisTemplate.opsForValue().set(
+                verifiedKey,
+                "인증 성공",
+                verifiedValidMinutes,
+                TimeUnit.MINUTES
+        );
 
-        if (!storedCode.equals(dto.getAuthCode())) {
-            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}", dto.getEmail());
-            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
-        }
-
-        try {
-            // 기존에 저장한 단순 이메일 정보는 삭제
-            redisTemplate.delete(authKey);
-
-            // 인증된 이메일이라는 정보만 저장
-            String verifiedKey = VERIFIED_PREFIX + dto.getEmail();
-            redisTemplate.opsForValue().set(
-                    verifiedKey,
-                    "인증 성공",
-                    verifiedValidMinutes,
-                    TimeUnit.MINUTES
-            );
-
-            log.info("이메일 인증 성공 - 대상: {}, 유효 시간: {}", dto.getEmail(),  verifiedValidMinutes);
-        } catch (Exception e) {
-            // Redis 통신 오류 등 인프라 에러가 서비스 로직을 삼키지 않도록 로그 추적
-            log.error("이메일 인증 프로세스 완료 처리 중 Redis 오류 발생 - 대상: {}, 이유: {}", dto.getEmail(), e.getMessage());
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
-        }
+        log.info("이메일 인증 성공 - 대상: {}, 유효 시간: {}", dto.getEmail(),  verifiedValidMinutes);
         return EmailCheckResponseDto.of(true, "이메일 인증이 완료되었습니다.");
     }
 
@@ -156,23 +136,9 @@ public class EmailService {
      * @throws BusinessException 인증 코드가 만료되었거나 일치하지 않는 경우 발생
      */
     public FindIdResponseDto verifyFindIdAndGetId(FindIdCheckRequestDto dto) {
-        String authKey = REDIS_PREFIX + dto.getEmail();
-        String storedCode = redisTemplate.opsForValue().get(authKey);
-
-        if (storedCode == null) {
-            log.warn("이메일 인증 실패 (코드 만료 혹은 이력 없음) - 대상: {}", dto.getEmail());
-            throw new BusinessException(ErrorCode.AUTH_CODE_EXPIRED);
-        }
-
-        if (!storedCode.equals(dto.getAuthCode())) {
-            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}", dto.getEmail());
-            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
-        }
+        validateAndDeleteAuthCode(dto.getEmail(), dto.getAuthCode());
 
         try {
-            // 사용이 끝난 인증 코드 삭제
-            redisTemplate.delete(authKey);
-
             Users user = userRepository.findByEmail(dto.getEmail())
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -181,11 +147,6 @@ public class EmailService {
             return new FindIdResponseDto(user.getId(), user.getLoginId());
         } catch (BusinessException e) {
             throw e;
-        }
-        catch (Exception e) {
-            // Redis 통신 오류 등 인프라 에러가 서비스 로직을 삼키지 않도록 로그 추적
-            log.error("이메일 인증 프로세스 완료 처리 중 Redis 오류 발생 - 대상: {}, 이유: {}", dto.getEmail(), e.getMessage());
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
     }
 
@@ -221,23 +182,9 @@ public class EmailService {
      * @throws BusinessException 인증 코드가 만료되었거나 일치하지 않는 경우 발생
      */
     public ResetTokenResponseDto verifyFindPasswordAndGetToken(FindPasswordCheckRequestDto dto) {
-        String authKey = REDIS_PREFIX + dto.getEmail();
-        String storedCode = redisTemplate.opsForValue().get(authKey);
-
-        if (storedCode == null) {
-            log.warn("이메일 인증 실패 (코드 만료 혹은 이력 없음) - 대상: {}", dto.getEmail());
-            throw new BusinessException(ErrorCode.AUTH_CODE_EXPIRED);
-        }
-
-        if (!storedCode.equals(dto.getAuthCode())) {
-            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}", dto.getEmail());
-            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
-        }
+        validateAndDeleteAuthCode(dto.getEmail(), dto.getAuthCode());
 
         try {
-            // 사용이 끝난 인증 코드 삭제
-            redisTemplate.delete(authKey);
-
             Users user = userRepository.findByLoginIdAndEmail(dto.getLoginId(), dto.getEmail())
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -253,9 +200,6 @@ public class EmailService {
             return new ResetTokenResponseDto(user.getId(), passwordResetToken);
         } catch (BusinessException e) {
             throw e;
-        } catch (Exception e) {
-            log.error("비밀번호 재설정 토큰 발급 및 완료 처리 중 Redis 오류 발생 - 대상: {}, 이유: {}", dto.getEmail(), e.getMessage());
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
     }
 
@@ -334,21 +278,50 @@ public class EmailService {
      */
     private EmailAuthInfo prepareAuthCode(String email) {
         String limitKey = REDIS_LIMIT_PREFIX + email;
-        Boolean emailAlreadyExists = redisTemplate.hasKey(limitKey);
+        // Redis에 1분 제한 키 등록
+        Boolean isSetSuccess = redisTemplate.opsForValue().setIfAbsent(limitKey, "blocked", 1,  TimeUnit.MINUTES);
 
-        if (emailAlreadyExists) {
+        if (Boolean.FALSE.equals(isSetSuccess)) {
             log.warn("이메일 발송 요청 과도 - 대상: {}", email);
             throw new BusinessException(ErrorCode.TOO_MANY_EMAIL_REQUESTS);
         }
         String authCode = createAuthCode();
         String redisKey = REDIS_PREFIX + email;
 
-        // Redis에 1분 제한 키 등록
-        redisTemplate.opsForValue().set(limitKey, "blocked", 1, TimeUnit.MINUTES);
         // Redis에 정보 저장
         redisTemplate.opsForValue().set(redisKey, authCode, authCodeValidMinutes, TimeUnit.MINUTES);
 
         return new EmailAuthInfo(authCode, redisKey, limitKey);
+    }
+
+    /**
+     * Redis에 저장된 인증코드를 검증한 후 검증이 완료되면 해당 코드 삭제
+     *
+     * @param email 검증 대상 사용자의 이메일 주소
+     * @param authCode 사용자가 입력한 이메일 인증 코드
+     * @throws BusinessException 인증코드 만료, 인증코드 불일치 시 발생
+     */
+    private void validateAndDeleteAuthCode(String email, String authCode) {
+        String authKey = REDIS_PREFIX + email;
+        String storedCode = redisTemplate.opsForValue().get(authKey);
+
+        if (storedCode == null) {
+            log.warn("이메일 인증 실패 (코드 만료 혹은 이력 없음) - 대상: {}", email);
+            throw new BusinessException(ErrorCode.AUTH_CODE_EXPIRED);
+        }
+
+        if (!storedCode.equals(authCode)) {
+            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}", email);
+            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
+        }
+
+        try {
+            // 사용이 끝난 인증 코드 삭제
+            redisTemplate.delete(authKey);
+        } catch (Exception e) {
+            log.error("인증 코드 삭제 중 Redis 오류 발생 - 대상: {}, 이유: {}", email, e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
     }
 
     // 이메일 발송 목적에 따른 제목과 본문을 관리하는 Enum
