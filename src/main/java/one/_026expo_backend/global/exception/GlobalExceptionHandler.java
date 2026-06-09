@@ -76,4 +76,32 @@ public class GlobalExceptionHandler {
                 .status(ErrorCode.INTERNAL_ERROR.getStatus())
                 .body(ApiResponse.error(ErrorCode.INTERNAL_ERROR));
     }
+
+    /**
+     * JSON 메시지 파싱 및 역직렬화 실패 시 처리
+     * * 클라이언트의 잘못된 JSON 형식 요청이나 데이터 타입 변환 에러를 가로챔
+     * * 스프링(Jackson)이 감싼 예외 껍데기를 벗겨내어, Enum 내부 등에서 발생한 근본적인 비즈니스 예외(BusinessException)를 정확하게 찾아 응답하기 위함
+     */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(org.springframework.http.converter.HttpMessageNotReadableException e) {
+        // 스프링이 감싼 예외의 가장 깊은 곳에 있는 진짜 원인(Root Cause)을 추출
+        Throwable rootCause = e.getMostSpecificCause();
+
+        // 그 원인이 우리가 정의한 비즈니스 예외라면 해당 에러 코드로 응답
+        if (rootCause instanceof BusinessException) {
+            BusinessException be = (BusinessException) rootCause;
+            ErrorCode errorCode = be.getErrorCode();
+            log.warn("[JSON_PARSE_BUSINESS_EXCEPTION] code: {}, message: {}", errorCode.getCode(), errorCode.getMessage());
+
+            return ResponseEntity
+                    .status(errorCode.getStatus())
+                    .body(ApiResponse.error(errorCode));
+        }
+
+        // 단순 JSON 문법 오류나 타입 불일치일 경우 범용적인 입력 오류로 응답
+        log.warn("[MESSAGE_NOT_READABLE] {}", e.getMessage());
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(ApiResponse.error(ErrorCode.INVALID_INPUT.getCode(), "요청하신 JSON 데이터의 형식이 올바르지 않습니다."));
+    }
 }

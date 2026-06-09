@@ -36,7 +36,8 @@ public enum ErrorCode {
     DELETED_ADMIN(HttpStatus.UNAUTHORIZED, "DELETED_ADMIN", "탈퇴한 관리자입니다."),
     QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ_NOT_FOUND", "요청하신 퀴즈를 찾을 수가 없습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "해당 유저를 찾을 수가 없습니다."),
-    INVALID_QUIZ_ANSWER(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_ANSWER", "잘못된 형식의 정답을 입력하셨습니다.");
+    INVALID_QUIZ_ANSWER(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_ANSWER", "잘못된 형식의 정답을 입력하셨습니다."),
+    ALREADY_SOLVED_QUIZ(HttpStatus.CONFLICT,"ALREADY_SOLVED_QUIZ", "이미 정답을 제출한 문제입니다.");
 
     private final HttpStatus status;
     private final String code;

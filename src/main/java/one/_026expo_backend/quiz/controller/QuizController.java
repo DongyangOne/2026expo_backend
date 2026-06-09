@@ -30,7 +30,7 @@ public class QuizController {
      * 요청 데이터 : NextQuizRequestDto
      * 응답 데이터 : NextQuizResponseDto
      */
-    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FOUND, ErrorCode.INVALID_QUIZ_ANSWER})
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FOUND, ErrorCode.INVALID_QUIZ_ANSWER, ErrorCode.ALREADY_SOLVED_QUIZ})
     @Operation(summary = "정답 제출 및 다음 퀴즈 조회", description = "요청 정보를 이용하여 현재 문제를 채점 및 기록하고 다음 퀴즈 정보를 가져옵니다.")
     @PostMapping("/next")
     public ResponseEntity<ApiResponse<NextQuizResponseDto>> StartQuiz(

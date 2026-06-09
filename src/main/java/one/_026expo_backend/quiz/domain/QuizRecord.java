@@ -32,6 +32,7 @@ public class QuizRecord {
     @Column(name = "selected_answer", nullable = false)
     private QuizAnswer selectedAnswer;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "is_correct", nullable = false, columnDefinition = "ENUM('Y','N')")
     private UseYnEnum isCorrect;
 

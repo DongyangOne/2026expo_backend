@@ -35,6 +35,11 @@ public class QuizService {
         Quiz nowQuiz = quizRepository.findById(requestDto.getCurrentQuizId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
 
+        //중복 처리 확인 및 예외처리
+        if (quizRecordRepository.existsByUsersAndQuiz(user, nowQuiz)) {
+            throw new BusinessException(ErrorCode.ALREADY_SOLVED_QUIZ);
+        }
+
         Boolean isCorrect = nowQuiz.getAnswer().equals(requestDto.getAnswer());
 
         Integer earnedPoint = isCorrect ? nowQuiz.getRewardPoint() : 0;
