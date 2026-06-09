@@ -156,7 +156,7 @@ public class QrService {
         }
 
         // 실제 사용자 조회
-        Users user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
+        Users user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         // 탈퇴 계정 차단
         if (user.getIsDeleted() == UseYnEnum.Y) {
