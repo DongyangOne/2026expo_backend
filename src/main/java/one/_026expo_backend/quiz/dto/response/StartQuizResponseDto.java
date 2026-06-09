@@ -19,8 +19,6 @@ public class StartQuizResponseDto {
     private Long quizId;
     @Schema(description = "첫번째 문제 내용", example = "페트병은 뚜껑과 함께 버려야 한다.")
     private String question;
-    @Schema(description = "첫번째 문제 보상", example = "10")
-    private Integer rewardPoint;
 
     public static StartQuizResponseDto of(
             List<Long> quizList,
@@ -30,7 +28,6 @@ public class StartQuizResponseDto {
                 .quizList(quizList)
                 .quizId(quiz.getQuizId())
                 .question(quiz.getQuestion())
-                .rewardPoint(quiz.getRewardPoint())
                 .build();
     }
 }
