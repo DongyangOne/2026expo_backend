@@ -8,6 +8,11 @@ spring:
   config:
     import: optional:file:.env
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
   datasource:
     url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: ${DB_USERNAME}
