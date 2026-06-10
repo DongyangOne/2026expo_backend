@@ -6,7 +6,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class QrTokenResponse {
+public class QrTokenResponseDto {
     @Schema(description = "생성된 QR용 토큰", example = "5edf4094-23...")
     private String qrToken;
 }
