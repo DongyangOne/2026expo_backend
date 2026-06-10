@@ -49,13 +49,13 @@ public class QuizSessionRedisRepository {
         // 프론트가 이후 요청에서 사용할 퀴즈 세션 id를 랜덤 생성합니다.
         String sessionId = UUID.randomUUID().toString();
 
-        QuizListSessionDto session = new QuizListSessionDto(quizIds, 0, false);
+        QuizListSessionDto session = new QuizListSessionDto(sessionId, quizIds, 0, false);
 
         try {
             String value = objectMapper.writeValueAsString(session);
 
-            // Redis에 저장
-            redisTemplate.opsForValue().set(key(userId, sessionId), value, QUIZ_SESSION_TTL);
+            // userId 기준으로 하나의 세션만 저장
+            redisTemplate.opsForValue().set(key(userId), value, QUIZ_SESSION_TTL);
 
             return sessionId;
         } catch (JsonProcessingException e) {
@@ -74,7 +74,7 @@ public class QuizSessionRedisRepository {
      */
     public QuizListSessionDto find(Long userId, String sessionId) {
         //key를 통해 value값이 있는지 조회
-        String value = redisTemplate.opsForValue().get(key(userId, sessionId));
+        String value = redisTemplate.opsForValue().get(key(userId));
 
         //세션 값이 없을 때 예외처리
         if (value == null) {
@@ -82,8 +82,14 @@ public class QuizSessionRedisRepository {
         }
 
         try {
+            QuizListSessionDto session = objectMapper.readValue(value, QuizListSessionDto.class);
+
+            if (!session.getSessionId().equals(sessionId)) {
+                throw new BusinessException(ErrorCode.INVALID_QUIZ_SESSION);
+            }
+
             // 조회 성공 시, dto로 변환한 값을 반환
-            return objectMapper.readValue(value, QuizListSessionDto.class);
+            return session;
         } catch (JsonProcessingException e) {
             throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
         }
@@ -99,14 +105,18 @@ public class QuizSessionRedisRepository {
      * 기존 currentIndex = 0
      * 다음 currentIndex = 1
      */
-    public void updateCurrentIndex(Long userId, String sessionId, List<Long> quizIds, Integer currentIndex) {
-        QuizListSessionDto session = new QuizListSessionDto(quizIds, currentIndex, false);
+    public void updateCurrentIndex(Long userId, QuizListSessionDto session, Integer currentIndex) {
+        QuizListSessionDto updatedSession = new QuizListSessionDto(
+                session.getSessionId(),
+                session.getQuizIds(),
+                currentIndex,
+                false
+        );
 
         try {
-            String value = objectMapper.writeValueAsString(session);
-
+            String value = objectMapper.writeValueAsString(updatedSession);
             // 같은 key에 새로운 value값으로 갱신
-            redisTemplate.opsForValue().set(key(userId, sessionId), value, QUIZ_SESSION_TTL);
+            redisTemplate.opsForValue().set(key(userId), value, QUIZ_SESSION_TTL);
         } catch (JsonProcessingException e) {
             throw new BusinessException(ErrorCode.QUIZ_SESSION_UPDATE_FAILED);
         }
@@ -115,12 +125,18 @@ public class QuizSessionRedisRepository {
     /**
      * 퀴즈 완료 처리
      */
-    public void complete(Long userId, String sessionId, List<Long> quizIds, Integer currentIndex) {
-        QuizListSessionDto session = new QuizListSessionDto(quizIds, currentIndex, true);
+    public void complete(Long userId, QuizListSessionDto session, Integer currentIndex) {
+        QuizListSessionDto completedSession = new QuizListSessionDto(
+                session.getSessionId(),
+                session.getQuizIds(),
+                currentIndex,
+                true
+        );
+
 
         try {
-            String value = objectMapper.writeValueAsString(session);
-            redisTemplate.opsForValue().set(key(userId, sessionId), value, QUIZ_SESSION_TTL);
+            String value = objectMapper.writeValueAsString(completedSession);
+            redisTemplate.opsForValue().set(key(userId), value, QUIZ_SESSION_TTL);
         } catch (JsonProcessingException e) {
             throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
         }
@@ -132,17 +148,13 @@ public class QuizSessionRedisRepository {
      * 마지막 문제까지 다 풀었을 때 Redis에 남은 퀴즈 세션을 삭제합니다.
      */
     public void delete(Long userId, String sessionId) {
-        redisTemplate.delete(key(userId, sessionId));
+        redisTemplate.delete(key(userId));
     }
 
     /**
      * Redis key 생성 메서드
-     *
-     * userId를 key에 포함시키는 이유:
-     * 다른 사용자의 sessionId를 알게 되더라도 자기 userId와 조합한 key로만 조회되기 때문에
-     * 남의 퀴즈 세션을 조회하기 어렵게 만들 수 있습니다.
      */
-    private String key(Long userId, String sessionId) {
-        return KEY_PREFIX + userId + ":" + sessionId;
+    private String key(Long userId) {
+        return KEY_PREFIX + userId;
     }
 }

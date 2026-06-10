@@ -45,7 +45,8 @@ public enum ErrorCode {
     QUIZ_SESSION_READ_FAILED(HttpStatus.CONFLICT,"QUIZ_SESSION_READ_FAILED", "퀴즈 세션 조회 중 오류가 발생했습니다."),
     QUIZ_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ_SESSION_NOT_FOUND", "퀴즈에 대한 세션 정보를 찾을 수 없습니다."),
     QUIZ_SESSION_UPDATE_FAILED(HttpStatus.CONFLICT, "QUIZ_SESSION_UPDATE_FAILED", "퀴즈 세션 수정 중 오류가 발생했습니다."),
-    QUIZ_SESSION_COMPLETE_FAILED(HttpStatus.CONFLICT, "QUIZ_SESSION_COMPLETE_FAILED", "퀴즈 세션 완료 처리 중 오류가 발생했습니다.");
+    QUIZ_SESSION_COMPLETE_FAILED(HttpStatus.CONFLICT, "QUIZ_SESSION_COMPLETE_FAILED", "퀴즈 세션 완료 처리 중 오류가 발생했습니다."),
+    INVALID_QUIZ_SESSION(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_SESSION", "현재 진행 중인 퀴즈 세션과 일치하지 않습니다.");
 
 
     private final HttpStatus status;

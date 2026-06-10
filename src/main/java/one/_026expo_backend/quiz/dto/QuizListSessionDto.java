@@ -12,6 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class QuizListSessionDto {
+    private String sessionId;
     private List<Long> quizIds;
     private Integer currentIndex;
     private Boolean finished;
