@@ -16,6 +16,8 @@ public class NextQuizResponseDto {
     private String explan;
     @Schema(description = "현재 퀴즈 정답 여부", example = "true")
     private Boolean isCorrect;
+    @Schema(description = "퀴즈 종료 여부", example = "false")
+    private Boolean finished;
     @Schema(description = "다음 퀴즈 id", example = "6")
     private Long nextQuizId;
     @Schema(description = "다음 퀴즈 내용", example = "깨진 유리컵이나 접시는 신문지에 싸서 유리류 수거함에 분리배출해야 한다.")
@@ -26,11 +28,13 @@ public class NextQuizResponseDto {
             Quiz nextQuiz,
             Boolean isCorrect
     ){
+        boolean finished = nextQuiz == null;
         return NextQuizResponseDto.builder()
                 .explan(nowQuiz.getExplan())
                 .isCorrect(isCorrect)
                 .nextQuizId(nextQuiz.getQuizId())
                 .nextQuestion(nextQuiz.getQuestion())
+                .finished(finished)
                 .build();
     }
 }

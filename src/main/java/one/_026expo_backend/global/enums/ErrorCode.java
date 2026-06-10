@@ -40,7 +40,12 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ_NOT_FOUND", "요청하신 퀴즈를 찾을 수가 없습니다."),
     INVALID_QUIZ_ANSWER(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_ANSWER", "잘못된 형식의 정답을 입력하셨습니다."),
-    ALREADY_SOLVED_QUIZ(HttpStatus.CONFLICT,"ALREADY_SOLVED_QUIZ", "이미 정답을 제출한 문제입니다.");
+    ALREADY_SOLVED_QUIZ(HttpStatus.CONFLICT,"ALREADY_SOLVED_QUIZ", "이미 정답을 제출한 문제입니다."),
+    QUIZ_SESSION_SAVE_FAILED(HttpStatus.CONFLICT,"QUIZ_SESSION_SAVE_FAILED", "퀴즈 세션 저장 중 오류가 발생했습니다."),
+    QUIZ_SESSION_READ_FAILED(HttpStatus.CONFLICT,"QUIZ_SESSION_READ_FAILED", "퀴즈 세션 조회 중 오류가 발생했습니다."),
+    QUIZ_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ_SESSION_NOT_FOUND", "퀴즈에 대한 세션 정보를 찾을 수 없습니다."),
+    QUIZ_SESSION_UPDATE_FAILED(HttpStatus.CONFLICT, "QUIZ_SESSION_UPDATE_FAILED", "퀴즈 세션 수정 중 오류가 발생했습니다."),
+    QUIZ_SESSION_COMPLETE_FAILED(HttpStatus.CONFLICT, "QUIZ_SESSION_COMPLETE_FAILED", "퀴즈 세션 완료 처리 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String code;
