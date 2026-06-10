@@ -40,7 +40,7 @@ public class QuizService {
             throw new BusinessException(ErrorCode.ALREADY_SOLVED_QUIZ);
         }
 
-        Boolean isCorrect = nowQuiz.getAnswer().equals(requestDto.getAnswer());
+        boolean isCorrect = nowQuiz.getAnswer().equals(requestDto.getAnswer());
 
         Integer earnedPoint = isCorrect ? nowQuiz.getRewardPoint() : 0;
 
