@@ -13,19 +13,19 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 public class StartQuizResponseDto {
-    @Schema(description = "문제에 사용할 퀴즈 id리스트", example = "[1, 5, 8, 9, 10]")
-    private List<Long> quizList;
+    @Schema(description = "퀴즈 세션 id", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String sessionId;
     @Schema(description = "첫번째 문제 퀴즈 id", example = "1")
     private Long quizId;
     @Schema(description = "첫번째 문제 내용", example = "페트병은 뚜껑과 함께 버려야 한다.")
     private String question;
 
     public static StartQuizResponseDto of(
-            List<Long> quizList,
+            String sessionId,
             Quiz quiz
             ) {
         return StartQuizResponseDto.builder()
-                .quizList(quizList)
+                .sessionId(sessionId)
                 .quizId(quiz.getQuizId())
                 .question(quiz.getQuestion())
                 .build();

@@ -32,7 +32,7 @@ public class QuizController {
      *
      * api 요청 예시 : POST /api/v1/quiz/start
      * 요청 데이터 : 퀴즈 개수(quantity)
-     * 응답 데이터 : 사용할 퀴즈들 id리스트, 첫번째 퀴즈 정보(id, 문제, 리워드)
+     * 응답 데이터 : 퀴즈 리스트를 저장하는 redis session id, 첫번째 퀴즈 정보(id, 문제)
      */
     @ApiErrorExceptions({ErrorCode.QUIZ_NOT_FOUND, ErrorCode.NOT_ENOUGH_QUIZ, ErrorCode.USER_NOT_FOUND})
     @Operation(summary = "퀴즈 시작", description = "유저가 선택한 퀴즈 개수를 이용하여 퀴즈 id리스트와 첫번재 문제 정보를 불러옵니다.")

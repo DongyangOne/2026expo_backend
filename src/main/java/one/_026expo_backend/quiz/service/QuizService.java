@@ -3,11 +3,10 @@ package one._026expo_backend.quiz.service;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
-import one._026expo_backend.quiz.domain.Quiz;
 import one._026expo_backend.quiz.dto.request.StartQuizRequestDto;
 import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
 import one._026expo_backend.quiz.repository.QuizRepository;
-import one._026expo_backend.user.domain.Users;
+import one._026expo_backend.quiz.repository.QuizSessionRedisRepository;
 import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +21,7 @@ import java.util.List;
 public class QuizService {
     private final QuizRepository quizRepository;
     private final UserRepository userRepository;
+    private final QuizSessionRedisRepository quizSessionRedisRepository;
 
     public StartQuizResponseDto startQuiz(Long userId, StartQuizRequestDto requestDto) {
         //유저 존재여부 예외처리
@@ -48,6 +48,9 @@ public class QuizService {
         var firstQuiz = quizRepository.findById(firstQuizId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND)); //첫번재 퀴즈에 대한 db정보가 삭제된 경우 예외처리
 
-        return StartQuizResponseDto.of(selectedQuizIds, firstQuiz);
+        //session 데이터 생성 및 session id 저장
+        String sessionId = quizSessionRedisRepository.save(userId, selectedQuizIds);
+
+        return StartQuizResponseDto.of(sessionId, firstQuiz);
     }
 }
