@@ -8,7 +8,7 @@ import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.quiz.domain.Quiz;
 import one._026expo_backend.quiz.domain.QuizRecord;
-import one._026expo_backend.quiz.dto.QuizListSessionDto;
+import one._026expo_backend.quiz.dto.redis.QuizListSessionDto;
 import one._026expo_backend.quiz.dto.request.NextQuizRequestDto;
 import one._026expo_backend.quiz.dto.response.NextQuizResponseDto;
 import one._026expo_backend.quiz.repository.QuizRecordRepository;
