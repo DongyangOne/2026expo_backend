@@ -1,4 +1,4 @@
-package one._026expo_backend.quiz.dto;
+package one._026expo_backend.quiz.dto.redis;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
