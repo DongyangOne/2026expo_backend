@@ -32,8 +32,8 @@ public class NextQuizResponseDto {
         return NextQuizResponseDto.builder()
                 .explan(nowQuiz.getExplan())
                 .isCorrect(isCorrect)
-                .nextQuizId(nextQuiz.getQuizId())
-                .nextQuestion(nextQuiz.getQuestion())
+                .nextQuizId(finished ? null : nextQuiz.getQuizId())
+                .nextQuestion(finished ? null : nextQuiz.getQuestion())
                 .finished(finished)
                 .build();
     }

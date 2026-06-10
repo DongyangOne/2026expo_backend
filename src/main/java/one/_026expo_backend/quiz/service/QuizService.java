@@ -5,9 +5,7 @@ import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.dto.request.StartQuizRequestDto;
 import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
-import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.UseYnEnum;
-import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.domain.Quiz;
 import one._026expo_backend.quiz.domain.QuizRecord;
 import one._026expo_backend.quiz.dto.QuizListSessionDto;
@@ -17,18 +15,14 @@ import one._026expo_backend.quiz.repository.QuizRecordRepository;
 import one._026expo_backend.quiz.repository.QuizRepository;
 import one._026expo_backend.quiz.repository.QuizSessionRedisRepository;
 import one._026expo_backend.user.repository.UserRepository;
-import one._026expo_backend.quiz.repository.QuizSessionRedisRepository;
 import one._026expo_backend.user.domain.Users;
-import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +31,7 @@ public class QuizService {
     private final QuizRepository quizRepository;
     private final UserRepository userRepository;
     private final QuizSessionRedisRepository quizSessionRedisRepository;
+    private final QuizRecordRepository quizRecordRepository;
 
     public StartQuizResponseDto startQuiz(Long userId, StartQuizRequestDto requestDto) {
         //유저 존재여부 예외처리
@@ -68,18 +63,15 @@ public class QuizService {
 
         return StartQuizResponseDto.of(sessionId, firstQuiz);
     }
-    private final UserRepository userRepository;
-    private final QuizRecordRepository quizRecordRepository;
-    private final QuizSessionRedisRepository quizSessionRedisRepository;
 
     @Transactional
     public NextQuizResponseDto moveOnQuiz(Long userId, NextQuizRequestDto requestDto) {
         //유저 존재여부 예외처리
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
         // Redis에서 현재 사용자의 퀴즈 진행 상태를 조회합니다.
         QuizListSessionDto session = quizSessionRedisRepository.find(userId, requestDto.getSessionId());
-
         List<Long> quizIds = session.getQuizIds();
         int currentIndex = session.getCurrentIndex();
 
@@ -123,8 +115,7 @@ public class QuizService {
         if (finished) {//마지막 문제일 시 세션 완료 처리 후, nextId값을 null로 반환
             quizSessionRedisRepository.complete(
                     userId,
-                    requestDto.getSessionId(),
-                    quizIds,
+                    session,
                     currentIndex
             );
             return NextQuizResponseDto.of(nowQuiz, null, isCorrect);
@@ -137,8 +128,7 @@ public class QuizService {
         //세션 정보(value) 업데이트
         quizSessionRedisRepository.updateCurrentIndex(
                 userId,
-                requestDto.getSessionId(),
-                quizIds,
+                session,
                 nextIndex
         );
 

@@ -145,9 +145,10 @@ public class QuizSessionRedisRepository {
     /**
      * 퀴즈 세션 삭제
      *
-     * 마지막 문제까지 다 풀었을 때 Redis에 남은 퀴즈 세션을 삭제합니다.
+     * 강제로 퀴즈 세션을 삭제해야 할 때 사용합니다.
+     * 일반적인 퀴즈 완료 처리는 complete()를 사용합니다.
      */
-    public void delete(Long userId, String sessionId) {
+    public void delete(Long userId) {
         redisTemplate.delete(key(userId));
     }
 
