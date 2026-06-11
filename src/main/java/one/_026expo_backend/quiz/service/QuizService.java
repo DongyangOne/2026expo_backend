@@ -16,6 +16,7 @@ import one._026expo_backend.quiz.repository.QuizRepository;
 import one._026expo_backend.quiz.repository.QuizSessionRedisRepository;
 import one._026expo_backend.user.repository.UserRepository;
 import one._026expo_backend.user.domain.Users;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,10 +74,13 @@ public class QuizService {
         // Redis에서 현재 사용자의 퀴즈 진행 상태를 조회합니다.
         QuizListSessionDto session = quizSessionRedisRepository.find(userId, requestDto.getSessionId());
         List<Long> quizIds = session.getQuizIds();
-        int currentIndex = session.getCurrentIndex();
+        int nextIndex = session.getNextIndex();
 
-        //잘못된 범위의 index값일 시 예외처리
-        if (currentIndex >= quizIds.size()) {
+        // startQuiz에서 첫 문제를 이미 내려줬으므로, 현재 채점할 문제는 nextIndex - 1 위치입니다.
+        int currentIndex = nextIndex - 1;
+
+        // 잘못된 범위의 index값일 시 예외처리
+        if (currentIndex < 0 || currentIndex >= quizIds.size()) {
             throw new BusinessException(ErrorCode.QUIZ_SESSION_NOT_FOUND);
         }
 
@@ -88,10 +92,14 @@ public class QuizService {
             throw new BusinessException(ErrorCode.INVALID_QUIZ_SEQUENCE);
         }
 
-        // 현재 문제 정보 조회
-        Quiz nowQuiz = quizRepository.findById(requestDto.getCurrentQuizId())
+        // 서버 세션 기준으로 검증된 퀴즈 id로 현재 문제를 조회합니다.
+        Quiz nowQuiz = quizRepository.findById(expectedQuizId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
 
+        // 같은 퀴즈 세션 안에서 이미 제출한 문제인지 확인합니다.
+        if (quizRecordRepository.existsByUsersAndQuizAndSessionId(user, nowQuiz, session.getSessionId())) {
+            throw new BusinessException(ErrorCode.ALREADY_SOLVED_QUIZ);
+        }
 
         //퀴즈 채점
         boolean isCorrect = nowQuiz.getAnswer().equals(requestDto.getAnswer());
@@ -101,22 +109,28 @@ public class QuizService {
         QuizRecord quizRecord = QuizRecord.builder()
                 .users(user)
                 .quiz(nowQuiz)
+                .sessionId(session.getSessionId())
                 .selectedAnswer(requestDto.getAnswer())
                 .isCorrect(isCorrect ? UseYnEnum.Y : UseYnEnum.N)
                 .earnedPoint(earnedPoint)
                 .answeredAt(LocalDateTime.now())
                 .build();
-        quizRecordRepository.save(quizRecord);
+        try {
+            quizRecordRepository.save(quizRecord);
+        } catch (DataIntegrityViolationException e) {
+            // 동시에 같은 세션의 같은 문제를 제출하면 DB unique 제약으로 중복 저장을 막습니다.
+            throw new BusinessException(ErrorCode.ALREADY_SOLVED_QUIZ);
+        }
 
-        //다음 문제 index 정의 및 마지막 문제인지 확인
-        int nextIndex = currentIndex + 1;
-        boolean finished = nextIndex >= quizIds.size();
+        // 다음 요청에서 채점할 문제 위치를 한 칸 앞으로 이동합니다.
+        int updatedNextIndex = nextIndex + 1;
+        boolean finished = updatedNextIndex > quizIds.size();
 
-        if (finished) {//마지막 문제일 시 세션 완료 처리 후, nextId값을 null로 반환
+        if (finished) { // 마지막 문제까지 풀이 완료 시, nextQuiz는 null로 반환합니다.
             quizSessionRedisRepository.complete(
                     userId,
                     session,
-                    currentIndex
+                    quizIds.size()
             );
             return NextQuizResponseDto.of(nowQuiz, null, isCorrect);
         }
@@ -126,10 +140,10 @@ public class QuizService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
 
         //세션 정보(value) 업데이트
-        quizSessionRedisRepository.updateCurrentIndex(
+        quizSessionRedisRepository.updateNextIndex(
                 userId,
                 session,
-                nextIndex
+                updatedNextIndex
         );
 
         return NextQuizResponseDto.of(nowQuiz, nextQuiz, isCorrect);

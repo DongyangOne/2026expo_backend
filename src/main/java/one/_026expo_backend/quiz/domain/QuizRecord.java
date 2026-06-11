@@ -28,6 +28,10 @@ public class QuizRecord {
     @JoinColumn(name = "quiz_id", nullable = false)
     private Quiz quiz;
 
+    // 같은 퀴즈 세션 안에서 중복 제출 여부를 구분하기 위한 세션 id
+    @Column(name = "session_id", nullable = false, length = 36)
+    private String sessionId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "selected_answer", nullable = false)
     private QuizAnswer selectedAnswer;

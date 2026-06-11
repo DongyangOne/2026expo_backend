@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
-    boolean existsByUsersAndQuiz(Users users, Quiz quiz);
+    boolean existsByUsersAndQuizAndSessionId(Users users, Quiz quiz, String sessionId);
 }

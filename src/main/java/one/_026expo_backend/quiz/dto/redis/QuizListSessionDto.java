@@ -14,6 +14,6 @@ import java.util.List;
 public class QuizListSessionDto {
     private String sessionId;
     private List<Long> quizIds;
-    private Integer currentIndex;
+    private Integer nextIndex;
     private Boolean finished;
 }
