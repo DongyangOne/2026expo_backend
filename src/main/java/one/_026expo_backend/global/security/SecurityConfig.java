@@ -62,6 +62,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").permitAll()
+                        .requestMatchers("/api/v1/character/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 모든 요청 전에 JWT필터로 토큰 검증 수행

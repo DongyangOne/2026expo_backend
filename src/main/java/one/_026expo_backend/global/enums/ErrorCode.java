@@ -39,7 +39,8 @@ public enum ErrorCode {
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_SEND_FAILED", "이메일 발송에 실패했습니다."),
     TOO_MANY_EMAIL_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_EMAIL_REQUESTS", "이메일 인증 요청이 너무 잦습니다. 1분 후에 다시 시도해 주세요."),
     DELETED_ADMIN(HttpStatus.UNAUTHORIZED, "DELETED_ADMIN", "탈퇴한 관리자입니다."),
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
+    USER_CHARACTER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_CHARACTER_NOT_FOUND", "유저의 캐릭터 정보를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
