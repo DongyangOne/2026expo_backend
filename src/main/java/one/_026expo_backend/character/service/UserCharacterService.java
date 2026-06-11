@@ -31,6 +31,11 @@ public class UserCharacterService {
     @Value("${minio.url-expiry-hours}")
     private int urlExpiryHours;
 
+    /**
+     * 로그인한 사용자의 고유 식별 아이디를 받아 해당 사용자의 레벨 별 이미지와 관련 정보를 반환
+     *
+     * @param userId 로그인한 사용자의 고유 식별 아이디
+     */
     public MyCharacterResponseDto getMyCharacter(Long userId) {
         UserCharacter userCharacter = userCharacterRepository.findByUserIdWithCharacter(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_CHARACTER_NOT_FOUND));
@@ -52,6 +57,12 @@ public class UserCharacterService {
         );
     }
 
+    /**
+     * 테이블에 저장된 이미지 주소를 받아 MinIO Presigned URL을 반환
+     *
+     * @param imageUrl user_character 테이블에 저장된 이미지 주소
+     * @return MinIO Presigned URL
+     */
     private String getMinioImageUrl(String imageUrl) {
         if (imageUrl == null || imageUrl.isBlank()) {
             return null;

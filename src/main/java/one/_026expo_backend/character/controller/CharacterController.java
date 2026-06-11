@@ -23,6 +23,11 @@ public class CharacterController {
     private final CharacterService characterService;
     private final UserCharacterService userCharacterService;
 
+    /**
+     * 로그인한 사용자의 레벨에 맞는 이미지와 정보들을 반환하는 API
+     *
+     * @param userId 로그인한 사용자의 고유 식별 아이디
+     */
     @Operation(summary = "사용자 캐릭터 정보 조회", description = "로그인한 사용자의 캐릭터 정보를 조회합니다.")
     @ApiErrorExceptions({ErrorCode.USER_CHARACTER_NOT_FOUND})
     @GetMapping("/me")
