@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
@@ -28,6 +29,7 @@ import java.time.ZoneId;
 import java.util.Date;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AuthService {
@@ -90,6 +92,14 @@ public class AuthService {
         String hashed = passwordEncoder.encode(request.getPassword());
 
         Users user = request.toEntity(hashed, isVerified); // 인코딩된 비밀번호, 이메일 인증 여부(미인증 시 예외 처리되므로 Y만 넘어감)
+
+        // 회원가입이 성공했으므로 Redis 메일인증 기록 삭제
+        try {
+            redisTemplate.delete(verifiedKey);
+        } catch (Exception e) {
+            // Redis 삭제 실패를 예외처리 할 시 회원가입 트랜잭션 전체가 롤백되므로 로그만 남김
+            log.error("회원가입 완료 후 Redis 인증 증표 삭제 실패 - 대상: {}, 이유: {}", request.getEmail(), e.getMessage());
+        }
 
         Users saved = userRepository.save(user);
         return SignupResponseDto.builder()
