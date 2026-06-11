@@ -44,15 +44,15 @@ public class SignupRequestDto {
     @NotNull(message = "이용약관 동의 여부는 필수입니다.")
     private UseYnEnum agreeTerms;
 
-    public Users toEntity(String encodedPassword, UseYnEnum termsAgreed) {
+    public Users toEntity(String encodedPassword, UseYnEnum emailVerified) {
         return Users.builder()
                 .username(username)
                 .loginId(loginId)
                 .password(encodedPassword)
                 .email(email)
-                .emailVerified(UseYnEnum.N) // 현재 단계에서는 이메일 인증을 진행하지 않으므로 emailVerified(UseYnEnum.N) 저장
+                .emailVerified(emailVerified)
                 .rememberMe(UseYnEnum.N)
-                .termsAgreed(termsAgreed)
+                .termsAgreed(agreeTerms)
                 .socialProviderId(null)
                 .socialType(SocialType.LOCAL)
                 .isDeleted(UseYnEnum.N)

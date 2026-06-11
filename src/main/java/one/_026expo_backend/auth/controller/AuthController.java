@@ -70,11 +70,11 @@ public class AuthController {
         SignupResponseDto response = authService.signup(request);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
-    
+
     /**
      * LOCAL 로그인 API
      * loginId와 비밀번호로 사용자를 인증, AccessToken과 RefreshToken을 발급
-     * 
+     *
      * @param requestDto 로그인 요청 데이터
      * @return 사용자 정보와 토큰을 포함한 로그인 응답
      */
@@ -130,7 +130,7 @@ public class AuthController {
         EmailSendResponseDto response = emailService.sendVerificationEmail(dto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
-  
+
     /**
      * Refresh Token 재발급 API
      * 앱에서 저장된 Refresh Token을 전달하면 Access Token과 Refresh Token을 새로 발급합니다.
