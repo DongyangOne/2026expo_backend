@@ -7,7 +7,9 @@ import one._026expo_backend.character.dto.response.MyCharacterResponseDto;
 import one._026expo_backend.character.service.CharacterService;
 import one._026expo_backend.character.service.UserCharacterService;
 import one._026expo_backend.global.config.auth.CurrentUser;
+import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
+import one._026expo_backend.global.enums.ErrorCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +24,7 @@ public class CharacterController {
     private final UserCharacterService userCharacterService;
 
     @Operation(summary = "사용자 캐릭터 정보 조회", description = "로그인한 사용자의 캐릭터 정보를 조회합니다.")
+    @ApiErrorExceptions({ErrorCode.USER_CHARACTER_NOT_FOUND})
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<MyCharacterResponseDto>> getMyCharacter(
             @CurrentUser Long userId
