@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
@@ -18,6 +19,7 @@ import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
 import one._026expo_backend.global.security.JwtTokenProvider;
 import one._026expo_backend.user.repository.UserRepository;
 import one._026expo_backend.user.enums.SocialType;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,13 +29,16 @@ import java.time.ZoneId;
 import java.util.Date;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AuthService {
     private final UserRepository userRepository;
+    private final StringRedisTemplate redisTemplate;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtProvider;
     private final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
+    private final String VERIFIED_PREFIX = "AUTH:VERIFIED:"; // 이메일 인증 접두사
 
     /**
      * loginId의 중복 여부를 확인한다.
@@ -44,7 +49,7 @@ public class AuthService {
      */
     public UseYnEnum isExistsLoginId(String loginId) {
         // 공통 응답으로 반환하기 위해 서비스 레이어에서 Blank 검증
-        if (loginId == null || loginId.isBlank()) { 
+        if (loginId == null || loginId.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_LOGIN_ID);
         }
         return userRepository.existsByLoginId(loginId) ? UseYnEnum.Y : UseYnEnum.N;
@@ -59,6 +64,16 @@ public class AuthService {
      */
     @Transactional
     public SignupResponseDto signup(SignupRequestDto request) {
+        String verifiedKey = VERIFIED_PREFIX + request.getEmail();
+        String verifiedStatus = redisTemplate.opsForValue().get(verifiedKey);
+
+        // 값이 존재하고, "인증 성공"일 때만 UseYnEnum.Y로 저장
+        UseYnEnum isVerified = (verifiedStatus != null && verifiedStatus.equals("인증 성공")) ? UseYnEnum.Y : UseYnEnum.N;
+
+        if (isVerified.equals(UseYnEnum.N)) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED); // 인증되지 않은 이메일인 경우 예외 발생
+        }
+
         // 중복 아이디 체크
         if (userRepository.existsByLoginId(request.getLoginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_USER);
@@ -76,7 +91,15 @@ public class AuthService {
 
         String hashed = passwordEncoder.encode(request.getPassword());
 
-        Users user = request.toEntity(hashed, request.getAgreeTerms());
+        Users user = request.toEntity(hashed, isVerified); // 인코딩된 비밀번호, 이메일 인증 여부(미인증 시 예외 처리되므로 Y만 넘어감)
+
+        // 회원가입이 성공했으므로 Redis 메일인증 기록 삭제
+        try {
+            redisTemplate.delete(verifiedKey);
+        } catch (Exception e) {
+            // Redis 삭제 실패를 예외처리 할 시 회원가입 트랜잭션 전체가 롤백되므로 로그만 남김
+            log.error("회원가입 완료 후 Redis 인증 증표 삭제 실패 - 대상: {}, 이유: {}", request.getEmail(), e.getMessage());
+        }
 
         Users saved = userRepository.save(user);
         return SignupResponseDto.builder()
@@ -90,7 +113,7 @@ public class AuthService {
     /**
      * LOCAL 로그인을 처리한다.
      * Refresh 토큰을 함께 저장한다.
-     * 
+     *
      * @param requestDto
      * @return
      */
@@ -164,7 +187,7 @@ public class AuthService {
         Long userId = Long.parseLong(claims.getSubject());
 
         Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN)); 
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
                 // userId로 유저를 찾을 수 없는 경우지만, 토큰이 유효하지 않은 것으로 간주하여 INVALID_TOKEN 처리
                 // 현재 흐름이 토큰 안의 userId와 DB 상태를 비교하는 것이기 때문
 
