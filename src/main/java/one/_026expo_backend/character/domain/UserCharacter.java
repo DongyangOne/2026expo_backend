@@ -34,4 +34,27 @@ public class UserCharacter {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+
+    /**
+     * 캐릭터 경험치를 증가시키고, 경험치가 레벨업 기준치를 넘으면 레벨을 올립니다.
+     *
+     * 예:
+     * 현재 경험치가 90이고 획득 경험치가 20, 레벨업 기준치가 100이면
+     * currentExp는 10이 되고 currentLevel은 1 증가합니다.
+     *
+     * @param exp 이번 퀴즈 결과로 획득한 경험치
+     * @param maxExpPerLevel 레벨업에 필요한 경험치 기준값
+     */
+    public void addExp(Integer exp, Integer maxExpPerLevel) {
+        this.currentExp += exp;
+
+        while (this.currentExp >= maxExpPerLevel) {
+            this.currentExp -= maxExpPerLevel;
+            this.currentLevel += 1;
+        }
+
+        this.updatedAt = LocalDateTime.now();
+    }
 }
+

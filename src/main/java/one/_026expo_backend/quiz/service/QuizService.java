@@ -1,9 +1,12 @@
 package one._026expo_backend.quiz.service;
 
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
+import one._026expo_backend.quiz.dto.request.QuizResultRequestDto;
 import one._026expo_backend.quiz.dto.request.StartQuizRequestDto;
+import one._026expo_backend.quiz.dto.response.QuizResultResponseDto;
 import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.quiz.domain.Quiz;
@@ -33,6 +36,7 @@ public class QuizService {
     private final UserRepository userRepository;
     private final QuizSessionRedisRepository quizSessionRedisRepository;
     private final QuizRecordRepository quizRecordRepository;
+    private final UserCharacterRepository userCharacterRepository;
 
     public StartQuizResponseDto startQuiz(Long userId, StartQuizRequestDto requestDto) {
         //유저 존재여부 예외처리
@@ -148,4 +152,59 @@ public class QuizService {
 
         return NextQuizResponseDto.of(nowQuiz, nextQuiz, isCorrect);
     }
+
+    @Transactional
+    public QuizResultResponseDto resultQuiz(Long userId, QuizResultRequestDto requestDto){
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        QuizListSessionDto session = quizSessionRedisRepository.find(userId, requestDto.getSessionId());
+
+        if (!Boolean.TRUE.equals(session.getFinished())) {
+            throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
+        }
+
+        int totalCount = session.getQuizIds().size();
+
+        long recordCount = quizRecordRepository.countByUsersAndSessionId(
+                user,
+                requestDto.getSessionId()
+        );
+
+        if (recordCount != totalCount) {
+            throw new BusinessException(ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED);
+        }
+
+        int correctCount = (int) quizRecordRepository.countByUsersAndSessionIdAndIsCorrect(
+                user,
+                requestDto.getSessionId(),
+                UseYnEnum.Y
+        );
+
+        int earnedExp = correctCount * EXP_PER_CORRECT_ANSWER;
+
+        UserCharacter userCharacter = userCharacterRepository.findFirstByUser(user)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_CHARACTER_NOT_FOUND));
+
+        userCharacter.addExp(earnedExp, MAX_EXP_PER_LEVEL);
+
+        quizSessionRedisRepository.delete(userId);
+
+        String resultMessage = QuizResultMessage.pick(correctCount, totalCount);
+
+        return QuizResultResponseDto.of(
+                totalCount,
+                correctCount,
+                earnedExp,
+                resultMessage,
+                userCharacter.getUserCharacterId(),
+                userCharacter.getCurrentLevel(),
+                userCharacter.getCurrentExp(),
+                MAX_EXP_PER_LEVEL
+        );
+    }
+
+
+
+
 }
