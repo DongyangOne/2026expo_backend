@@ -38,7 +38,7 @@ public class QuizSessionRedisRepository {
      * Redis에는 이런 JSON이 저장됩니다.
      * {
      *   "quizIds": [3, 8, 1, 10, 5],
-     *   "currentIndex": 0
+     *   "nextIndex": 0
      * }
      *
      * @param userId 현재 로그인한 사용자 id
@@ -49,7 +49,7 @@ public class QuizSessionRedisRepository {
         // 프론트가 이후 요청에서 사용할 퀴즈 세션 id를 랜덤 생성합니다.
         String sessionId = UUID.randomUUID().toString();
 
-        QuizListSessionDto session = new QuizListSessionDto(sessionId, quizIds, 0, false);
+        QuizListSessionDto session = new QuizListSessionDto(sessionId, quizIds, 1, false);
 
         try {
             String value = objectMapper.writeValueAsString(session);
@@ -96,20 +96,20 @@ public class QuizSessionRedisRepository {
     }
 
     /**
-     * 현재 퀴즈 위치 갱신
+     * 다음 퀴즈 위치 갱신
      *
      * 사용자가 현재 문제를 맞히거나 틀린 뒤,
-     * 다음 문제로 넘어갈 때 currentIndex를 1 증가시켜 저장합니다.
+     * 다음에 출제할 quizIds의 인덱스를 저장합니다.
      *
      * 예:
-     * 기존 currentIndex = 0
-     * 다음 currentIndex = 1
+     * 기존 nextIndex = 1
+     * 다음 nextIndex = 2
      */
-    public void updateCurrentIndex(Long userId, QuizListSessionDto session, Integer currentIndex) {
+    public void updateNextIndex(Long userId, QuizListSessionDto session, Integer nextIndex) {
         QuizListSessionDto updatedSession = new QuizListSessionDto(
                 session.getSessionId(),
                 session.getQuizIds(),
-                currentIndex,
+                nextIndex,
                 false
         );
 
@@ -125,11 +125,11 @@ public class QuizSessionRedisRepository {
     /**
      * 퀴즈 완료 처리
      */
-    public void complete(Long userId, QuizListSessionDto session, Integer currentIndex) {
+    public void complete(Long userId, QuizListSessionDto session, Integer nextIndex) {
         QuizListSessionDto completedSession = new QuizListSessionDto(
                 session.getSessionId(),
                 session.getQuizIds(),
-                currentIndex,
+                nextIndex,
                 true
         );
 
@@ -145,9 +145,10 @@ public class QuizSessionRedisRepository {
     /**
      * 퀴즈 세션 삭제
      *
-     * 마지막 문제까지 다 풀었을 때 Redis에 남은 퀴즈 세션을 삭제합니다.
+     * 강제로 퀴즈 세션을 삭제해야 할 때 사용합니다.
+     * 일반적인 퀴즈 완료 처리는 complete()를 사용합니다.
      */
-    public void delete(Long userId, String sessionId) {
+    public void delete(Long userId) {
         redisTemplate.delete(key(userId));
     }
 
