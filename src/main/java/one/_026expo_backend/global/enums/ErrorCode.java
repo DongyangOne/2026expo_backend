@@ -38,8 +38,16 @@ public enum ErrorCode {
     AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_CODE_MISMATCH", "인증 코드가 일치하지 않습니다."),
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_SEND_FAILED", "이메일 발송에 실패했습니다."),
     TOO_MANY_EMAIL_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_EMAIL_REQUESTS", "이메일 인증 요청이 너무 잦습니다. 1분 후에 다시 시도해 주세요."),
-    DELETED_ADMIN(HttpStatus.UNAUTHORIZED, "DELETED_ADMIN", "탈퇴한 관리자입니다."),
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
+    QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ_NOT_FOUND", "요청하신 퀴즈를 찾을 수가 없습니다."),
+    NOT_ENOUGH_QUIZ(HttpStatus.UNPROCESSABLE_CONTENT, "NOT_ENOUGH_QUIZ", "요청한 개수만큼 퀴즈가 충분하지 않습니다."),
+    ALREADY_SOLVED_QUIZ(HttpStatus.CONFLICT,"ALREADY_SOLVED_QUIZ", "이미 정답을 제출한 문제입니다."),
+    QUIZ_SESSION_SAVE_FAILED(HttpStatus.CONFLICT,"QUIZ_SESSION_SAVE_FAILED", "퀴즈 세션 저장 중 오류가 발생했습니다."),
+    QUIZ_SESSION_READ_FAILED(HttpStatus.CONFLICT,"QUIZ_SESSION_READ_FAILED", "퀴즈 세션 조회 중 오류가 발생했습니다."),
+    QUIZ_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "QUIZ_SESSION_NOT_FOUND", "퀴즈에 대한 세션 정보를 찾을 수 없습니다."),
+    QUIZ_SESSION_UPDATE_FAILED(HttpStatus.CONFLICT, "QUIZ_SESSION_UPDATE_FAILED", "퀴즈 세션 수정 중 오류가 발생했습니다."),
+    QUIZ_SESSION_COMPLETE_FAILED(HttpStatus.CONFLICT, "QUIZ_SESSION_COMPLETE_FAILED", "퀴즈 세션 완료 처리 중 오류가 발생했습니다."),
+    INVALID_QUIZ_SESSION(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_SESSION", "현재 진행 중인 퀴즈 세션과 일치하지 않습니다.");
+
 
     private final HttpStatus status;
     private final String code;
