@@ -1,6 +1,8 @@
 package one._026expo_backend.quiz.service;
 
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.character.domain.UserCharacter;
+import one._026expo_backend.character.enums.LevelPolicy;
 import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
@@ -14,6 +16,7 @@ import one._026expo_backend.quiz.domain.QuizRecord;
 import one._026expo_backend.quiz.dto.redis.QuizListSessionDto;
 import one._026expo_backend.quiz.dto.request.NextQuizRequestDto;
 import one._026expo_backend.quiz.dto.response.NextQuizResponseDto;
+import one._026expo_backend.quiz.enums.QuizResultMessage;
 import one._026expo_backend.quiz.repository.QuizRecordRepository;
 import one._026expo_backend.quiz.repository.QuizRepository;
 import one._026expo_backend.quiz.repository.QuizSessionRedisRepository;
@@ -155,56 +158,65 @@ public class QuizService {
 
     @Transactional
     public QuizResultResponseDto resultQuiz(Long userId, QuizResultRequestDto requestDto){
+        //유저 존재 여부 예외처리
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
+        //세션 정보 가져오기
         QuizListSessionDto session = quizSessionRedisRepository.find(userId, requestDto.getSessionId());
 
+        //해당 퀴즈가 끝나지 않은 상태일 시 예외처리
         if (!Boolean.TRUE.equals(session.getFinished())) {
             throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
         }
 
+        //퀴즈 문제 개수와 기록 개수를 비교하여 다를 경우 예외처리
         int totalCount = session.getQuizIds().size();
-
-        long recordCount = quizRecordRepository.countByUsersAndSessionId(
-                user,
-                requestDto.getSessionId()
-        );
-
+        long recordCount = quizRecordRepository.countByUsersAndSessionId(user, requestDto.getSessionId());
         if (recordCount != totalCount) {
             throw new BusinessException(ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED);
         }
 
+        //정답인 문제 개수를 세고 경험치로 환산
         int correctCount = (int) quizRecordRepository.countByUsersAndSessionIdAndIsCorrect(
                 user,
                 requestDto.getSessionId(),
                 UseYnEnum.Y
         );
 
-        int earnedExp = correctCount * EXP_PER_CORRECT_ANSWER;
+        // DB에 저장된 이번 퀴즈 세션의 모든 earnedPoint를 합산해서 획득 경험치로 사용
+        int earnedExp = quizRecordRepository.sumEarnedPointByUsersAndSessionId(
+                user,
+                requestDto.getSessionId()
+        );
 
+        // 유저 캐릭터 정보 가져오기
         UserCharacter userCharacter = userCharacterRepository.findFirstByUser(user)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_CHARACTER_NOT_FOUND));
 
-        userCharacter.addExp(earnedExp, MAX_EXP_PER_LEVEL);
+        int beforeLevel = userCharacter.getCurrentLevel();
+        int beforeExp = userCharacter.getCurrentExp();
 
-        quizSessionRedisRepository.delete(userId);
+        // 파라미터 1개짜리 addExp 호출 (Enum에서 레벨업 요구치 자동 계산)
+        userCharacter.addExp(earnedExp);
 
+        // 결과 정산 후, 현재 유저의 새로운 레벨 기준 최대 경험치를 Enum에서 조회
+        int currentMaxExp = LevelPolicy.getMaxExpForLevel(userCharacter.getCurrentLevel());
+        //결과에 따른 격려 및 칭찬 메세지 가져오기
         String resultMessage = QuizResultMessage.pick(correctCount, totalCount);
 
+        quizSessionRedisRepository.delete(userId);
         return QuizResultResponseDto.of(
                 totalCount,
                 correctCount,
                 earnedExp,
                 resultMessage,
                 userCharacter.getUserCharacterId(),
+                beforeLevel,
+                beforeExp,
                 userCharacter.getCurrentLevel(),
                 userCharacter.getCurrentExp(),
-                MAX_EXP_PER_LEVEL
+                currentMaxExp
         );
     }
-
-
-
-
 }

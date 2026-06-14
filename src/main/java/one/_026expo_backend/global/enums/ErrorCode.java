@@ -48,7 +48,10 @@ public enum ErrorCode {
     QUIZ_SESSION_COMPLETE_FAILED(HttpStatus.CONFLICT, "QUIZ_SESSION_COMPLETE_FAILED", "퀴즈 세션 완료 처리 중 오류가 발생했습니다."),
     INVALID_QUIZ_SEQUENCE(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_SEQUENCE", "잘못된 퀴즈 id를 입력하셨습니다."),
     NOT_ENOUGH_QUIZ(HttpStatus.UNPROCESSABLE_CONTENT, "NOT_ENOUGH_QUIZ", "요청한 개수만큼 퀴즈가 충분하지 않습니다."),
-    INVALID_QUIZ_SESSION(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_SESSION", "현재 진행 중인 퀴즈 세션과 일치하지 않습니다.");
+    INVALID_QUIZ_SESSION(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_SESSION", "현재 진행 중인 퀴즈 세션과 일치하지 않습니다."),
+    QUIZ_NOT_FINISHED(HttpStatus.BAD_REQUEST, "QUIZ_NOT_FINISHED", "아직 완료되지 않은 퀴즈 세션입니다."),
+    QUIZ_RESULT_RECORD_NOT_MATCHED(HttpStatus.CONFLICT, "QUIZ_RESULT_RECORD_NOT_MATCHED", "퀴즈 세션 정보와 풀이 기록이 일치하지 않습니다."),
+    USER_CHARACTER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_CHARACTER_NOT_FOUND", "유저 캐릭터를 찾을 수 없습니다.");
 
 
     private final HttpStatus status;

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import one._026expo_backend.character.enums.LevelPolicy;
 import one._026expo_backend.user.domain.Users;
 
 import java.time.LocalDateTime;
@@ -37,21 +38,28 @@ public class UserCharacter {
 
 
     /**
-     * 캐릭터 경험치를 증가시키고, 경험치가 레벨업 기준치를 넘으면 레벨을 올립니다.
+     * 캐릭터 경험치를 증가시키고, 경험치가 해당 레벨의 요구 기준치를 넘으면 레벨을 올립니다.
+     * LevelPolicy Enum을 참조하여 각 레벨에 맞는 요구 경험치를 동적으로 계산합니다.
      *
      * 예:
-     * 현재 경험치가 90이고 획득 경험치가 20, 레벨업 기준치가 100이면
-     * currentExp는 10이 되고 currentLevel은 1 증가합니다.
+     * 현재 레벨 1(요구 경험치 100)이고 현재 경험치가 90일 때, 획득 경험치로 20을 받으면
+     * currentExp는 10이 되고 currentLevel은 2로 증가합니다.
+     * 최대 레벨(LEVEL_MAX)에 도달하면 더 이상 레벨이 오르지 않습니다.
      *
      * @param exp 이번 퀴즈 결과로 획득한 경험치
-     * @param maxExpPerLevel 레벨업에 필요한 경험치 기준값
      */
-    public void addExp(Integer exp, Integer maxExpPerLevel) {
+    public void addExp(Integer exp) {
         this.currentExp += exp;
 
-        while (this.currentExp >= maxExpPerLevel) {
-            this.currentExp -= maxExpPerLevel;
+        // 현재 레벨의 최대 경험치를 Enum에서 가져옴
+        int requiredExp = LevelPolicy.getMaxExpForLevel(this.currentLevel);
+
+        // 경험치가 요구치를 넘으면 레벨업 진행 (요구치가 다를 수 있으므로 매번 갱신)
+        while (this.currentExp >= requiredExp && this.currentLevel < LevelPolicy.LEVEL_10.getLevel()) {
+            this.currentExp -= requiredExp;
             this.currentLevel += 1;
+            // 레벨업 후, 다음 레벨의 요구 경험치로 갱신
+            requiredExp = LevelPolicy.getMaxExpForLevel(this.currentLevel);
         }
 
         this.updatedAt = LocalDateTime.now();
