@@ -10,7 +10,7 @@ import one._026expo_backend.global.enums.UseYnEnum;
 import java.time.format.DateTimeFormatter;
 
 /**
- *  피드백 리스트 조회 시 리스트의 요소가 될 데이터 구조
+ * 피드백 리스트 조회 시 리스트의 요소가 될 데이터 구조
  */
 @Schema(description = "피드백 리스트 요소 데이터 구조")
 @Getter
@@ -20,7 +20,7 @@ public class FeedbackListResponseDto {
     @Schema(description = "피드백 id", example = "3")
     private Long feedbackId;
 
-    @Schema(description = "날짜", example = "2026-05-06")
+    @Schema(description = "날짜", example = "2026.05.06")
     private String date;
 
     @Schema(description = "시간", example = "13:34")
@@ -29,17 +29,17 @@ public class FeedbackListResponseDto {
     @Schema(description = "올바른 분리수거 성공 여부", example = "true")
     private Boolean isSuccess;
 
-    @Schema(description = "쓰레기 종류", example = "CAN")
+    @Schema(description = "쓰레기 종류", example = "캔")
     private String wasteType;
 
-    @Schema(description = "피드백 내용", example = "올바른 분리수거가 이루어지지 않았어요.(캔에 음식물이 들어있었다)")
+    @Schema(description = "피드백 내용", example = "캔에 음식물이 들어있었다")
     private String feedbackText;
 
 
     public static FeedbackListResponseDto from(Feedback feedback) {
         boolean isSuccess = feedback.getIsFailed() == UseYnEnum.N;
 
-        String formattedDate = feedback.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String formattedDate = feedback.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy.MM.dd"));
         String formattedTime = feedback.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm"));
 
         return FeedbackListResponseDto.builder()
