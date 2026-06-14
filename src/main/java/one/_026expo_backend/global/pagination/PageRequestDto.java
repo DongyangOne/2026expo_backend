@@ -21,6 +21,7 @@ public class PageRequestDto {
     @Max(100)
     private Integer pageSize = 10;
 
+    @Schema(hidden = true)
     public int getOffset() {
         return page * pageSize;
     }
