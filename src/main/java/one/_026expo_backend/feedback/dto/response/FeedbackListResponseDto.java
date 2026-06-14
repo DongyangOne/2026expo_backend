@@ -47,7 +47,7 @@ public class FeedbackListResponseDto {
                 .date(formattedDate)
                 .time(formattedTime)
                 .isSuccess(isSuccess)
-                .wasteType(feedback.getWasteType().name())
+                .wasteType(feedback.getWasteType().getDescription())
                 .feedbackText(feedback.getFeedbackText())
                 .build();
     }
