@@ -47,6 +47,8 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	implementation 'io.minio:minio:8.5.7'
 }
 
 tasks.named('test') {

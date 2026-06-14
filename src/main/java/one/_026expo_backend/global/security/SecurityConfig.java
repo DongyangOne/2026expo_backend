@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/quiz/**").authenticated()
                         .requestMatchers("/api/v1/admin/**").permitAll()
+                        .requestMatchers("/api/v1/character/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 모든 요청 전에 JWT필터로 토큰 검증 수행
