@@ -92,9 +92,6 @@ public class UserService {
 
         // 내부 캐릭터 정보가 null인 경우
         Character currentCharacter = userCharacter.getCharacter();
-        if (currentCharacter == null) {
-            throw new BusinessException(ErrorCode.USER_CHARACTER_NOT_FOUND);
-        }
 
         // MinIO에 저장된 이미지 주소
         String imageUrl = getMinioImageUrl(currentCharacter.getImageUrl());
@@ -128,7 +125,7 @@ public class UserService {
             );
         } catch (Exception e) {
             log.error("MinIO 이미지 주소 생성 실패 - 파일 경로: {}, 이유: {}", imageUrl, e.getMessage());
-            return null;
+            throw new BusinessException(ErrorCode.IMAGE_URL_GENERATION_FAILED);
         }
     }
 }
