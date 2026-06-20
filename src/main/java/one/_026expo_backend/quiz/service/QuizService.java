@@ -22,6 +22,7 @@ import one._026expo_backend.quiz.repository.QuizRepository;
 import one._026expo_backend.quiz.repository.QuizSessionRedisRepository;
 import one._026expo_backend.user.repository.UserRepository;
 import one._026expo_backend.user.domain.Users;
+import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.QuizProfileInfo;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -154,6 +155,24 @@ public class QuizService {
         );
 
         return NextQuizResponseDto.of(nowQuiz, nextQuiz, isCorrect);
+    }
+    /**
+     * 로그인한 사용자가 맞춘 문제 수와 전체 문제 수를 반환
+     *
+     * @param userId 퀴즈 기록을 조회하려는 사용자 고유 아이디
+     * @return 사용자가 맞춘 문제 수와 푼 전체 문제 수
+     */
+    @Transactional(readOnly = true)
+    public QuizProfileInfo getQuizProfileInfo(long userId) {
+        int totalSolvedCount = quizRecordRepository.countByUsersId(userId);
+
+        // 푼 문제가 0이라면 맞힌 것도 0일 것이므로 추가 쿼리를 날리지 않게 하기 위함
+        if (totalSolvedCount == 0)
+            return QuizProfileInfo.of(0, 0);
+
+        int correctSolvedCount = quizRecordRepository.countByUsersIdAndIsCorrect(userId, UseYnEnum.Y);
+        return QuizProfileInfo.of(correctSolvedCount, totalSolvedCount);
+
     }
 
     @Transactional

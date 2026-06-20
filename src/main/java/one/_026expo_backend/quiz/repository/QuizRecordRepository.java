@@ -27,4 +27,10 @@ public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
             @Param("user") Users user,
             @Param("sessionId") String sessionId
     );
+
+    // 특정 유저가 푼 총 문제 수
+    int countByUsersId(long userId);
+
+    // 특정 유저가 맞춘 문제 수
+    int countByUsersIdAndIsCorrect(long userId, UseYnEnum isCorrect);
 }

@@ -7,6 +7,7 @@ import one._026expo_backend.global.config.auth.CurrentUser;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
+import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
 import one._026expo_backend.user.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,21 @@ public class UserController {
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> findOneProfile(@CurrentUser Long userId) {
         UserProfileResponseDto response = userService.findOneProfile(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 로그인한 사용자의 캐릭터, 퀴즈 정보, 분리수거 기록을 반환하는 API
+     *
+     * @param userId 로그인한 사용자의 고유 식별 아이디
+     */
+    @Operation(summary = "사용자 정보 조회", description = "로그인한 사용자의 정보를 조회합니다.")
+    @ApiErrorExceptions({ErrorCode.USER_CHARACTER_NOT_FOUND})
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserDashboardResponseDto>> getMyDashboard(
+            @CurrentUser Long userId
+    ) {
+        UserDashboardResponseDto response = userService.getUserDashboard(userId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }
