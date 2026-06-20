@@ -2,8 +2,10 @@ package one._026expo_backend.feedback.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.feedback.dto.request.FeedbackDetailRequestDto;
 import one._026expo_backend.feedback.dto.response.FeedbackDetailResponseDto;
 import one._026expo_backend.feedback.service.FeedbackDetailService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
@@ -12,10 +14,7 @@ import one._026expo_backend.global.enums.ErrorCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/feedbackDetail")
@@ -37,9 +36,9 @@ public class FeedbackDetailController {
     @GetMapping("/{feedbackId}")
     public ResponseEntity<ApiResponse<FeedbackDetailResponseDto>> getFeedbackDetail(
             @AuthenticationPrincipal Long userId,
-            @PathVariable("feedbackId") @Positive(message = "피드백 ID는 1 이상의 양수여야 합니다.") Long feedbackId
+            @Valid @ModelAttribute FeedbackDetailRequestDto requestDto
     ) {
-        FeedbackDetailResponseDto response = feedbackDetailService.getFeedbackDetail(userId, feedbackId);
+        FeedbackDetailResponseDto response = feedbackDetailService.getFeedbackDetail(userId, requestDto.getFeedbackId());
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

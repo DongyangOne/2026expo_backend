@@ -8,6 +8,8 @@ import one._026expo_backend.feedback.repository.FeedbackDetailRepository;
 import one._026expo_backend.feedback.repository.FeedbackRepository;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
+import one._026expo_backend.user.domain.Users;
+import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class FeedbackDetailService {
     private final FeedbackDetailRepository feedbackDetailRepository;
     private final FeedbackRepository feedbackRepository;
+    private final UserRepository userRepository;
 
     public FeedbackDetailResponseDto getFeedbackDetail(Long userId, Long feedbackId) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
         Feedback feedback = feedbackRepository.findById(feedbackId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FEEDBACK_NOT_FOUND));
 
-        if (!feedback.getUser().getId().equals(userId)) {
+        if (!feedback.getUser().getId().equals(user.getId())) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
 
