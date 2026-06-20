@@ -165,6 +165,11 @@ public class QuizService {
         //세션 정보 가져오기
         QuizListSessionDto session = quizSessionRedisRepository.find(userId, requestDto.getSessionId());
 
+        //중복 요청 시 경험치 중복 추가 방지
+        if (!quizSessionRedisRepository.lockReward(requestDto.getSessionId())) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
+        }
+
         //해당 퀴즈가 끝나지 않은 상태일 시 예외처리
         if (!Boolean.TRUE.equals(session.getFinished())) {
             throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
