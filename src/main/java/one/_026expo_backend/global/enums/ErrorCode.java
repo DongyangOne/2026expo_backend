@@ -49,6 +49,8 @@ public enum ErrorCode {
     INVALID_QUIZ_SEQUENCE(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_SEQUENCE", "잘못된 퀴즈 id를 입력하셨습니다."),
     NOT_ENOUGH_QUIZ(HttpStatus.UNPROCESSABLE_CONTENT, "NOT_ENOUGH_QUIZ", "요청한 개수만큼 퀴즈가 충분하지 않습니다."),
     INVALID_QUIZ_SESSION(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_SESSION", "현재 진행 중인 퀴즈 세션과 일치하지 않습니다."),
+    USER_CHARACTER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_CHARACTER_NOT_FOUND", "유저의 캐릭터 정보를 찾을 수 없습니다."),
+    IMAGE_URL_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR,"IMAGE_URL_GENERATION_FAILED", "MinIO URL 생성에 실패하였습니다."),
     FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "FEEDBACK_NOT_FOUND", "해당 피드백 기록을 찾을 수 없습니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "해당 피드백에 접근할 권한이 없습니다."),
     FEEDBACK_DETAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "FEEDBACK_DETAIL_NOT_FOUND", "해당 분리수거 가이드 상세 정보를 찾을 수 없습니다.");
