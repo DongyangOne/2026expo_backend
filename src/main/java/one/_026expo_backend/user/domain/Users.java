@@ -80,4 +80,11 @@ public class Users extends BaseEntity {
     public void changePassword(String newPassword) {
         this.password = newPassword;
     }
+
+    public void softDelete() {
+        this.isDeleted = UseYnEnum.Y;
+        this.deletedAt = LocalDateTime.now();
+        this.refreshToken = null;
+        this.refreshExpiredAt = null;
+    }
 }
