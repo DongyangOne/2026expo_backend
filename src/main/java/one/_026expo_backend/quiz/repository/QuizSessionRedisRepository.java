@@ -153,6 +153,17 @@ public class QuizSessionRedisRepository {
     }
 
     /**
+     * 퀴즈 결과 정산 중복 요청 방지용 락 (5초간 유지)
+     */
+    public boolean lockReward(String sessionId) {
+        // "quiz:lock:세션아이디" 라는 키가 없을 때만 "Y"를 저장하고 5초 뒤에 소멸시킴
+        return Boolean.TRUE.equals(
+                redisTemplate.opsForValue().setIfAbsent("quiz:lock:" + sessionId, "Y", Duration.ofSeconds(5))
+        );
+    }
+
+
+    /**
      * Redis key 생성 메서드
      */
     private String key(Long userId) {
