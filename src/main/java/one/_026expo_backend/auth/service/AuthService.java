@@ -235,7 +235,7 @@ public class AuthService {
         Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        user.updateRefreshToken(null, null);
+        user.clearRefreshToken();
 
         return AuthLogoutResponseDto.of("로그아웃이 완료되었습니다.");
     }

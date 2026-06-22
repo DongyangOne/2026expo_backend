@@ -81,10 +81,13 @@ public class Users extends BaseEntity {
         this.password = newPassword;
     }
 
+    public void clearRefreshToken() {
+        this.refreshToken = null;
+        this.refreshExpiredAt = null;
+    }
+
     public void softDelete() {
         this.isDeleted = UseYnEnum.Y;
         this.deletedAt = LocalDateTime.now();
-        this.refreshToken = null;
-        this.refreshExpiredAt = null;
     }
 }

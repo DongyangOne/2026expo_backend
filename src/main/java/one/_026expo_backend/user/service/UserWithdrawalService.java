@@ -58,6 +58,7 @@ public class UserWithdrawalService {
                 withdrawReasonDetail
         ));
 
+        user.clearRefreshToken();
         user.softDelete();
 
         return UserWithdrawResponseDto.of("탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.");
