@@ -5,6 +5,8 @@ import io.minio.MinioClient;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.auth.enums.EmailVerificationPurpose;
+import one._026expo_backend.auth.service.EmailService;
 import one._026expo_backend.character.domain.Character;
 import one._026expo_backend.character.domain.UserCharacter;
 import one._026expo_backend.character.repository.UserCharacterRepository;
@@ -14,10 +16,12 @@ import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.service.QuizService;
 import one._026expo_backend.user.domain.Users;
+import one._026expo_backend.user.dto.request.UserEmailVerificationConfirmRequestDto;
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.CharacterInfo;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.QuizProfileInfo;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecyclingLogInfo;
+import one._026expo_backend.user.dto.response.UserEmailVerificationConfirmResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
 import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 @Transactional(readOnly = true)
 public class UserService {
     private final UserRepository userRepository;
+    private final EmailService emailService;
     private final UserCharacterRepository userCharacterRepository;
     private final QuizService quizService;
     private final FeedbackService feedbackService;
@@ -63,6 +68,28 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return UserProfileResponseDto.from(user);
+    }
+
+    @Transactional
+    public UserEmailVerificationConfirmResponseDto confirmEmailVerification(
+            Long userId,
+            UserEmailVerificationConfirmRequestDto requestDto
+    ) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        emailService.verifyCode(
+                user.getId(),
+                user.getEmail(),
+                requestDto.getVerificationCode(),
+                EmailVerificationPurpose.MYPAGE_USER_VERIFICATION
+        );
+
+        return UserEmailVerificationConfirmResponseDto.of(true, "이메일 인증이 완료되었습니다.");
     }
 
     /**
