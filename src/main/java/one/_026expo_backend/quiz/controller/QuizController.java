@@ -39,7 +39,7 @@ public class QuizController {
     @ApiErrorExceptions({ErrorCode.QUIZ_NOT_FOUND, ErrorCode.NOT_ENOUGH_QUIZ, ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_SESSION_SAVE_FAILED})
     @Operation(summary = "퀴즈 시작", description = "유저가 선택한 퀴즈 개수를 이용하여 퀴즈 id리스트와 첫번째 문제 정보를 불러옵니다.")
     @PostMapping("/start")
-    public ResponseEntity<ApiResponse<StartQuizResponseDto>> StartQuiz(
+    public ResponseEntity<ApiResponse<StartQuizResponseDto>> startQuiz(
             @AuthenticationPrincipal Long userId,
             @RequestBody @Valid StartQuizRequestDto requestDto
     ){
@@ -58,7 +58,7 @@ public class QuizController {
                     ErrorCode.QUIZ_SESSION_READ_FAILED, ErrorCode.QUIZ_SESSION_UPDATE_FAILED, ErrorCode.QUIZ_SESSION_COMPLETE_FAILED})
     @Operation(summary = "정답 제출 및 다음 퀴즈 조회", description = "요청 정보를 이용하여 현재 문제를 채점 및 기록하고 다음 퀴즈 정보를 가져옵니다.")
     @PostMapping("/next")
-    public ResponseEntity<ApiResponse<NextQuizResponseDto>> StartQuiz(
+    public ResponseEntity<ApiResponse<NextQuizResponseDto>> nextQuiz(
             @AuthenticationPrincipal Long userId,
             @RequestBody @Valid NextQuizRequestDto requestDto
     ){
