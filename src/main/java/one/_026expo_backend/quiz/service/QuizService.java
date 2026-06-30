@@ -44,8 +44,9 @@ public class QuizService {
 
     public StartQuizResponseDto startQuiz(Long userId, StartQuizRequestDto requestDto) {
         //유저 존재여부 예외처리
-        userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
 
         var allQuizIds = new ArrayList<>(quizRepository.findAllQuizIds());
 
