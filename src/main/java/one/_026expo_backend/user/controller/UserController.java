@@ -12,6 +12,7 @@ import one._026expo_backend.user.dto.request.UserEmailVerificationConfirmRequest
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
 import one._026expo_backend.user.dto.response.UserEmailVerificationConfirmResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
+import one._026expo_backend.user.dto.response.UserVerificationEmailSendResponseDto;
 import one._026expo_backend.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,12 +45,33 @@ public class UserController {
     }
 
     @Operation(
+            summary = "마이페이지 사용자 인증 이메일 전송",
+            description = "로그인한 사용자의 계정 이메일로 6자리 인증 번호를 발송합니다."
+    )
+    @ApiErrorExceptions({
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.TOO_MANY_EMAIL_REQUESTS,
+            ErrorCode.EMAIL_SEND_FAILED,
+            ErrorCode.INTERNAL_ERROR
+    })
+    @PostMapping("/verification/email")
+    public ResponseEntity<ApiResponse<UserVerificationEmailSendResponseDto>> sendVerificationEmail(
+            @CurrentUser Long userId
+    ) {
+        UserVerificationEmailSendResponseDto response = userService.sendVerificationEmail(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(
             summary = "마이페이지 사용자 인증 이메일 코드 검증",
             description = "로그인한 사용자가 이메일로 받은 인증 코드를 입력하면 마이페이지 사용자 인증 목적의 이메일 코드를 검증합니다."
     )
     @ApiErrorExceptions({
             ErrorCode.UNAUTHORIZED,
             ErrorCode.USER_NOT_FOUND,
+            ErrorCode.INVALID_INPUT,
             ErrorCode.AUTH_CODE_EXPIRED,
             ErrorCode.AUTH_CODE_MISMATCH,
             ErrorCode.INTERNAL_ERROR

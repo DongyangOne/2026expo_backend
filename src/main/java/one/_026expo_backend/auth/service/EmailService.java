@@ -12,6 +12,8 @@ import one._026expo_backend.auth.dto.response.ResetTokenResponseDto;
 import one._026expo_backend.auth.enums.EmailVerificationPurpose;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
+import one._026expo_backend.user.domain.Users;
+import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.MailAuthenticationException;
@@ -21,8 +23,6 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import one._026expo_backend.user.repository.UserRepository;
-import one._026expo_backend.user.domain.Users;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -80,6 +80,29 @@ public class EmailService {
         sendEmailAndHandleExceptions(message, dto.getEmail(), authInfo.redisKey, authInfo.limitKey);
 
         return EmailSendResponseDto.of(dto.getEmail(), LocalDateTime.now().plusMinutes(authCodeValidMinutes));
+    }
+
+    /**
+     * 마이페이지 사용자 인증용 인증 번호 이메일을 발송합니다.
+     *
+     * purpose를 함께 저장해 기존 이메일 인증 흐름과 Redis 키가 섞이지 않도록 분리합니다.
+     *
+     * @param email 인증 번호를 수신할 이메일 주소
+     * @param purpose 이메일 인증 코드 사용 목적
+     * @return 발송된 이메일 주소와 인증 코드의 만료 시간이 담긴 응답 DTO
+     */
+    public EmailSendResponseDto sendVerificationEmail(String email, EmailVerificationPurpose purpose) {
+        EmailAuthInfo authInfo = prepareAuthCode(email, purpose);
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(email);
+        message.setSubject(EmailTemplate.MYPAGE_USER_VERIFICATION.getSubject());
+        message.setText(EmailTemplate.MYPAGE_USER_VERIFICATION.createContent(authInfo.authCode));
+
+        sendEmailAndHandleExceptions(message, email, authInfo.redisKey, authInfo.limitKey);
+
+        return EmailSendResponseDto.of(email, LocalDateTime.now().plusMinutes(authCodeValidMinutes));
     }
 
     /**
@@ -258,7 +281,6 @@ public class EmailService {
             );
         }
     }
-
     private String createAuthCode() {
         SecureRandom random = new SecureRandom();
         return String.valueOf(100000 + random.nextInt(900000));
@@ -360,7 +382,8 @@ public class EmailService {
     private enum EmailTemplate {
         SIGNUP("[2026 ONE Expo] 회원가입 인증 번호 안내", "2026 ONE Expo 회원가입 인증 번호입니다.\n\n"),
         FIND_ID("[2026 ONE Expo] 아이디 찾기 인증 번호 안내", "2026 ONE Expo 아이디 찾기 인증 번호입니다.\n\n"),
-        FIND_PASSWORD("[2026 ONE Expo] 비밀번호 찾기 인증 번호 안내", "2026 ONE Expo 비밀번호 찾기 인증 번호입니다.\n\n");
+        FIND_PASSWORD("[2026 ONE Expo] 비밀번호 찾기 인증 번호 안내", "2026 ONE Expo 비밀번호 찾기 인증 번호입니다.\n\n"),
+        MYPAGE_USER_VERIFICATION("[2026 ONE Expo] 마이페이지 사용자 인증 번호 안내", "2026 ONE Expo 마이페이지 사용자 인증 번호입니다.\n\n");
 
         @Getter
         private final String subject;
