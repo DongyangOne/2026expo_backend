@@ -44,7 +44,9 @@ public class EmailService {
     private static final String REDIS_PREFIX = "AUTH:EMAIL:";
     private static final String REDIS_LIMIT_PREFIX = "AUTH:EMAIL:LIMIT:";
     private static final String VERIFIED_PREFIX = "AUTH:VERIFIED:";
+    private static final String USER_VERIFICATION_CONFIRMED_PREFIX = "AUTH:USER_VERIFICATION:CONFIRMED:";
     private static final String RESET_TOKEN_PREFIX = "AUTH:PASSWORD:RESET:";
+    private static final long USER_VERIFICATION_CONFIRMED_TTL_MINUTES = 10L;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -266,6 +268,19 @@ public class EmailService {
         validateAndDeleteAuthCode(email, authCode, purpose);
     }
 
+    public void verifyCode(Long userId, String email, String authCode, EmailVerificationPurpose purpose) {
+        verifyCode(email, authCode, purpose);
+
+        if (purpose == EmailVerificationPurpose.MYPAGE_USER_VERIFICATION) {
+            String confirmedKey = USER_VERIFICATION_CONFIRMED_PREFIX + userId + ":" + purpose.name();
+            redisTemplate.opsForValue().set(
+                    confirmedKey,
+                    "인증 성공",
+                    USER_VERIFICATION_CONFIRMED_TTL_MINUTES,
+                    TimeUnit.MINUTES
+            );
+        }
+    }
     private String createAuthCode() {
         SecureRandom random = new SecureRandom();
         return String.valueOf(100000 + random.nextInt(900000));

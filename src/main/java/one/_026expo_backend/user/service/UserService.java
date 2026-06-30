@@ -17,7 +17,9 @@ import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.service.QuizService;
 import one._026expo_backend.user.domain.Users;
+import one._026expo_backend.user.dto.request.UserEmailVerificationConfirmRequestDto;
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
+import one._026expo_backend.user.dto.response.UserEmailVerificationConfirmResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
 import one._026expo_backend.user.dto.response.UserVerificationEmailSendResponseDto;
 import one._026expo_backend.user.repository.UserRepository;
@@ -72,6 +74,28 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return UserProfileResponseDto.from(user);
+    }
+
+    @Transactional
+    public UserEmailVerificationConfirmResponseDto confirmEmailVerification(
+            Long userId,
+            UserEmailVerificationConfirmRequestDto requestDto
+    ) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        emailService.verifyCode(
+                user.getId(),
+                user.getEmail(),
+                requestDto.getVerificationCode(),
+                EmailVerificationPurpose.MYPAGE_USER_VERIFICATION
+        );
+
+        return UserEmailVerificationConfirmResponseDto.of(true, "이메일 인증이 완료되었습니다.");
     }
 
     /**

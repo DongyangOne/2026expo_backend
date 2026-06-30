@@ -2,18 +2,22 @@ package one._026expo_backend.user.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.global.config.auth.CurrentUser;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
+import one._026expo_backend.user.dto.request.UserEmailVerificationConfirmRequestDto;
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
+import one._026expo_backend.user.dto.response.UserEmailVerificationConfirmResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
 import one._026expo_backend.user.dto.response.UserVerificationEmailSendResponseDto;
 import one._026expo_backend.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -57,6 +61,28 @@ public class UserController {
             @CurrentUser Long userId
     ) {
         UserVerificationEmailSendResponseDto response = userService.sendVerificationEmail(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(
+            summary = "마이페이지 사용자 인증 이메일 코드 검증",
+            description = "로그인한 사용자가 이메일로 받은 인증 코드를 입력하면 마이페이지 사용자 인증 목적의 이메일 코드를 검증합니다."
+    )
+    @ApiErrorExceptions({
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.AUTH_CODE_EXPIRED,
+            ErrorCode.AUTH_CODE_MISMATCH,
+            ErrorCode.INTERNAL_ERROR
+    })
+    @PostMapping("/verification/email/confirm")
+    public ResponseEntity<ApiResponse<UserEmailVerificationConfirmResponseDto>> confirmEmailVerification(
+            @CurrentUser Long userId,
+            @Valid @RequestBody UserEmailVerificationConfirmRequestDto requestDto
+    ) {
+        UserEmailVerificationConfirmResponseDto response =
+                userService.confirmEmailVerification(userId, requestDto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
