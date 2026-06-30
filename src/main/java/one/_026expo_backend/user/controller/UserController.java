@@ -9,9 +9,11 @@ import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
+import one._026expo_backend.user.dto.response.UserVerificationEmailSendResponseDto;
 import one._026expo_backend.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,6 +37,26 @@ public class UserController {
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> findOneProfile(@CurrentUser Long userId) {
         UserProfileResponseDto response = userService.findOneProfile(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(
+            summary = "마이페이지 사용자 인증 이메일 전송",
+            description = "로그인한 사용자의 계정 이메일로 6자리 인증 번호를 발송합니다."
+    )
+    @ApiErrorExceptions({
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.TOO_MANY_EMAIL_REQUESTS,
+            ErrorCode.EMAIL_SEND_FAILED,
+            ErrorCode.INTERNAL_ERROR
+    })
+    @PostMapping("/verification/email")
+    public ResponseEntity<ApiResponse<UserVerificationEmailSendResponseDto>> sendVerificationEmail(
+            @CurrentUser Long userId
+    ) {
+        UserVerificationEmailSendResponseDto response = userService.sendVerificationEmail(userId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
