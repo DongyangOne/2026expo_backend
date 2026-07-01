@@ -281,6 +281,24 @@ public class EmailService {
             );
         }
     }
+
+    /**
+     * 특정 목적의 사용자 인증 완료 여부를 검증한다.
+     *
+     * 마이페이지 민감 정보 수정처럼 추가 본인 확인이 필요한 흐름에서 Redis에 남겨둔 인증 완료 상태를 재사용한다.
+     *
+     * @param userId 인증 완료 여부를 확인할 사용자 식별자
+     * @param purpose 인증 완료 상태의 사용 목적
+     */
+    public void validateVerificationConfirmed(Long userId, EmailVerificationPurpose purpose) {
+        String confirmedKey = USER_VERIFICATION_CONFIRMED_PREFIX + userId + ":" + purpose.name();
+        String verifiedStatus = redisTemplate.opsForValue().get(confirmedKey);
+
+        if (verifiedStatus == null) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+    }
+
     private String createAuthCode() {
         SecureRandom random = new SecureRandom();
         return String.valueOf(100000 + random.nextInt(900000));

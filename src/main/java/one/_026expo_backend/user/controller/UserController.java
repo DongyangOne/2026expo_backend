@@ -9,13 +9,16 @@ import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.user.dto.request.UserEmailVerificationConfirmRequestDto;
+import one._026expo_backend.user.dto.request.UserProfileUpdateRequestDto;
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
 import one._026expo_backend.user.dto.response.UserEmailVerificationConfirmResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
+import one._026expo_backend.user.dto.response.UserProfileUpdateResponseDto;
 import one._026expo_backend.user.dto.response.UserVerificationEmailSendResponseDto;
 import one._026expo_backend.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -83,6 +86,33 @@ public class UserController {
     ) {
         UserEmailVerificationConfirmResponseDto response =
                 userService.confirmEmailVerification(userId, requestDto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 로그인한 사용자의 마이페이지 프로필 정보를 수정한다.
+     *
+     * 수정 가능한 값은 이메일과 비밀번호만 허용해, 계정 식별값이나 화면 미지원 필드는 임의 변경되지 않도록 한다.
+     *
+     * @param userId 인증된 사용자 식별자
+     * @param requestDto 프로필 수정 요청 정보
+     * @return 수정된 마이페이지 프로필 응답
+     */
+    @Operation(summary = "마이페이지 프로필 수정", description = "로그인한 사용자의 마이페이지 프로필 정보 중 이메일과 비밀번호를 수정합니다.")
+    @ApiErrorExceptions({
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.EMAIL_NOT_VERIFIED,
+            ErrorCode.DUPLICATE_EMAIL,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.PASSWORD_MISMATCH
+    })
+    @PatchMapping("/profile")
+    public ResponseEntity<ApiResponse<UserProfileUpdateResponseDto>> updateProfile(
+            @CurrentUser Long userId,
+            @Valid @RequestBody UserProfileUpdateRequestDto requestDto
+    ) {
+        UserProfileUpdateResponseDto response = userService.updateProfile(userId, requestDto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

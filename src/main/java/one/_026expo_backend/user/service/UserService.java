@@ -18,14 +18,18 @@ import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.service.QuizService;
 import one._026expo_backend.user.domain.Users;
 import one._026expo_backend.user.dto.request.UserEmailVerificationConfirmRequestDto;
+import one._026expo_backend.user.dto.request.UserProfileUpdateRequestDto;
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
 import one._026expo_backend.user.dto.response.UserEmailVerificationConfirmResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
+import one._026expo_backend.user.dto.response.UserProfileUpdateResponseDto;
 import one._026expo_backend.user.dto.response.UserVerificationEmailSendResponseDto;
 import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +48,7 @@ public class UserService {
     private final UserCharacterRepository userCharacterRepository;
     private final QuizService quizService;
     private final FeedbackService feedbackService;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     private final MinioClient minioClient;
 
@@ -96,6 +101,34 @@ public class UserService {
         );
 
         return UserEmailVerificationConfirmResponseDto.of(true, "이메일 인증이 완료되었습니다.");
+    }
+
+    /**
+     * 로그인한 사용자의 마이페이지 프로필 정보를 수정한다.
+     *
+     * 마이페이지 사용자 인증을 완료한 사용자만 수정할 수 있게 제한해,
+     * 로그인 상태만으로 민감 정보가 바뀌지 않도록 한다.
+     *
+     * @param userId 인증된 사용자 식별자
+     * @param requestDto 프로필 수정 요청 DTO
+     * @return 수정된 마이페이지 프로필 응답 DTO
+     */
+    @Transactional
+    public UserProfileUpdateResponseDto updateProfile(Long userId, UserProfileUpdateRequestDto requestDto) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        validateProfileUpdateRequest(requestDto);
+        emailService.validateVerificationConfirmed(userId, EmailVerificationPurpose.MYPAGE_USER_VERIFICATION);
+
+        updateEmailIfPresent(user, requestDto.getEmail());
+        updatePasswordIfPresent(user, requestDto.getPassword(), requestDto.getPasswordConfirm());
+
+        return UserProfileUpdateResponseDto.from(user);
     }
 
     /**
@@ -196,6 +229,56 @@ public class UserService {
         if (email == null || email.isBlank() || !email.contains("@")) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    private void validateProfileUpdateRequest(UserProfileUpdateRequestDto requestDto) {
+        boolean hasEmail = StringUtils.hasText(requestDto.getEmail());
+        boolean hasPassword = StringUtils.hasText(requestDto.getPassword());
+
+        if (!hasEmail && !hasPassword) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (requestDto.getEmail() != null && !hasEmail) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (requestDto.getPassword() != null && !hasPassword) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private void updateEmailIfPresent(Users user, String email) {
+        if (!StringUtils.hasText(email)) {
+            return;
+        }
+
+        String normalizedEmail = email.trim();
+        if (normalizedEmail.equals(user.getEmail())) {
+            return;
+        }
+
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
+        user.changeEmail(normalizedEmail);
+    }
+
+    private void updatePasswordIfPresent(Users user, String password, String passwordConfirm) {
+        if (!StringUtils.hasText(password)) {
+            return;
+        }
+
+        if (!StringUtils.hasText(passwordConfirm)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (!password.equals(passwordConfirm)) {
+            throw new BusinessException(ErrorCode.PASSWORD_MISMATCH);
+        }
+
+        user.changePassword(passwordEncoder.encode(password));
     }
 
     private String maskEmail(String email) {
