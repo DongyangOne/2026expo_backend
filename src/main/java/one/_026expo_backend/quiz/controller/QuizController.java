@@ -8,7 +8,6 @@ import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.quiz.dto.request.NextQuizRequestDto;
-import one._026expo_backend.quiz.dto.request.QuizResultRequestDto;
 import one._026expo_backend.quiz.dto.response.NextQuizResponseDto;
 import one._026expo_backend.quiz.dto.request.StartQuizRequestDto;
 import one._026expo_backend.quiz.dto.response.QuizResultResponseDto;
@@ -16,10 +15,7 @@ import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
 import one._026expo_backend.quiz.service.QuizService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
 
 @RestController
@@ -69,19 +65,20 @@ public class QuizController {
     /**
      * 퀴즈 종료 및 결과정산 API
      *
-     * api 요청 예시 : POST /api/v1/quiz/result
+     * api 요청 예시 : POST /api/v1/quiz/sessions/{sessionId}/result
      * 요청 데이터 : QuizResultRequestDto
      * 응답 데이터 : QuizResponseResponseDto
      */
-    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FINISHED, ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED, ErrorCode.USER_CHARACTER_NOT_FOUND})
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FINISHED, ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED, ErrorCode.USER_CHARACTER_NOT_FOUND,
+                        ErrorCode.INVALID_QUIZ_SESSION, ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID})
     @Operation(summary = "퀴즈 종료 및 결과 정산", description = "완료된 퀴즈 세션의 결과를 집계하고 캐릭터 경험치를 증가시킵니다.")
-    @PostMapping("/result")
+    @PostMapping("/sessions/{sessionId}/result")
     public ResponseEntity<ApiResponse<QuizResultResponseDto>> resultQuiz
     (
             @AuthenticationPrincipal Long userId,
-            @RequestBody @Valid QuizResultRequestDto requestDto
+            @PathVariable("sessionId") String sessionId
     ) {
-        QuizResultResponseDto responseDto = quizService.resultQuiz(userId, requestDto);
+        QuizResultResponseDto responseDto = quizService.resultQuiz(userId, sessionId);
         return ResponseEntity.ok(ApiResponse.ok(responseDto));
     }
 
