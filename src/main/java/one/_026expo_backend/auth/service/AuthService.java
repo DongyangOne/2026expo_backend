@@ -5,6 +5,10 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.character.domain.Character;
+import one._026expo_backend.character.domain.UserCharacter;
+import one._026expo_backend.character.repository.CharacterRepository;
+import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
@@ -35,11 +39,14 @@ import java.util.Date;
 @Transactional(readOnly = true)
 public class AuthService {
     private final UserRepository userRepository;
+    private final CharacterRepository characterRepository;
+    private final UserCharacterRepository userCharacterRepository;
     private final StringRedisTemplate redisTemplate;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtProvider;
     private final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
     private static final String VERIFIED_PREFIX = "AUTH:VERIFIED:"; // 이메일 인증 접두사
+    private static final Long DEFAULT_CHARACTER_ID = 1L; // 회원가입 시 기본 지급되는 캐릭터 id
 
     /**
      * loginId의 중복 여부를 확인한다.
@@ -103,6 +110,13 @@ public class AuthService {
         }
 
         Users saved = userRepository.save(user);
+
+        // 회원가입 시 기본 캐릭터를 레벨 1, 경험치 0으로 지급
+        // UserCharacter에서 캐릭터 id 대신 캐릭터 객체를 이용하고 있어 id 1에 해당하는 캐릭터를 먼저 찾음
+        Character defaultCharacter = characterRepository.findById(DEFAULT_CHARACTER_ID)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHARACTER_NOT_FOUND));
+        userCharacterRepository.save(UserCharacter.create(saved, defaultCharacter));
+
         return SignupResponseDto.from(saved);
     }
 
