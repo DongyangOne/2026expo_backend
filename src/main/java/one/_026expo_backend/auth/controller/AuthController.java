@@ -81,8 +81,9 @@ public class AuthController {
     @Operation(summary = "LOCAL 로그인", description="유저가 요청한 로그인 정보로 LOCAL 로그인 진행합니다.")
     @ApiErrorExceptions({ErrorCode.INVALID_CREDENTIALS, ErrorCode.DELETED_USER, ErrorCode.SOCIAL_LOGIN_REQUIRED, ErrorCode.EMAIL_NOT_VERIFIED})
     @PostMapping("/login")
-    public ApiResponse<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto) {
-        return ApiResponse.ok(authService.login(requestDto));
+    public ResponseEntity<ApiResponse<LoginResponseDto>> login(@Valid @RequestBody LoginRequestDto requestDto) {
+        LoginResponseDto response = authService.login(requestDto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     /**
