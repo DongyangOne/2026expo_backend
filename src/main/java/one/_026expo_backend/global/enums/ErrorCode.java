@@ -52,7 +52,10 @@ public enum ErrorCode {
     USER_CHARACTER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_CHARACTER_NOT_FOUND", "유저의 캐릭터 정보를 찾을 수 없습니다."),
     IMAGE_URL_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR,"IMAGE_URL_GENERATION_FAILED", "MinIO URL 생성에 실패하였습니다."),
     QUIZ_NOT_FINISHED(HttpStatus.BAD_REQUEST, "QUIZ_NOT_FINISHED", "아직 완료되지 않은 퀴즈 세션입니다."),
-    QUIZ_RESULT_RECORD_NOT_MATCHED(HttpStatus.CONFLICT, "QUIZ_RESULT_RECORD_NOT_MATCHED", "퀴즈 세션 정보와 풀이 기록이 일치하지 않습니다.");
+    QUIZ_RESULT_RECORD_NOT_MATCHED(HttpStatus.CONFLICT, "QUIZ_RESULT_RECORD_NOT_MATCHED", "퀴즈 세션 정보와 풀이 기록이 일치하지 않습니다."),
+    FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "FEEDBACK_NOT_FOUND", "해당 피드백 기록을 찾을 수 없습니다."),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "해당 피드백에 접근할 권한이 없습니다."),
+    FEEDBACK_DETAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "FEEDBACK_DETAIL_NOT_FOUND", "해당 분리수거 가이드 상세 정보를 찾을 수 없습니다.");
 
 
     private final HttpStatus status;
