@@ -44,7 +44,7 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtProvider;
-    private final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
+    private static final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
     private static final String VERIFIED_PREFIX = "AUTH:VERIFIED:"; // 이메일 인증 접두사
     private static final Long DEFAULT_CHARACTER_ID = 1L; // 회원가입 시 기본 지급되는 캐릭터 id
 
