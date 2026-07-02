@@ -178,14 +178,14 @@ public class AuthService {
         String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
         String refreshToken = createAndStoreRefreshToken(user, Role.USER);
 
-        return LoginResponseDto.builder()
-                .userId(user.getId())
-                .loginId(user.getLoginId())
-                .username(user.getUsername())
-                .rememberMe(user.getRememberMe())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        return LoginResponseDto.of(
+            user.getId(),
+            user.getLoginId(),
+            user.getUsername(),
+            user.getRememberMe(),
+            accessToken,
+            refreshToken
+        );
     }
 
     /**
