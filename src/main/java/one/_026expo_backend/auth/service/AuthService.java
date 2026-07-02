@@ -148,8 +148,9 @@ public class AuthService {
      * LOCAL 로그인을 처리한다.
      * Refresh 토큰을 함께 저장한다.
      *
-     * @param requestDto
-     * @return
+     * @param requestDto 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답
+     * @throws BusinessException 계정이 조회되지 않거나 삭제된 경우, 이메일 인증 미완료, 비밀번호 미일치 시 발생
      */
     @Transactional
     public LoginResponseDto login(LoginRequestDto requestDto) {
