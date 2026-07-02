@@ -103,12 +103,7 @@ public class AuthService {
         }
 
         Users saved = userRepository.save(user);
-        return SignupResponseDto.builder()
-            .username(saved.getUsername())
-            .loginId(saved.getLoginId())
-            .email(saved.getEmail())
-            .createdDate(saved.getCreatedAt())
-            .build();
+        return SignupResponseDto.from(saved);
     }
 
     /**

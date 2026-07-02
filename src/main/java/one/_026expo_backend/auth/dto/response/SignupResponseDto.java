@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import one._026expo_backend.user.domain.Users;
+
 import java.time.LocalDateTime;
 
 @Getter
@@ -26,4 +28,12 @@ public class SignupResponseDto {
 	@Schema(description = "생성일시", example = "2026-05-28T08:12:00")
 	private LocalDateTime createdDate;
 
+	public static SignupResponseDto from(Users user) {
+		return SignupResponseDto.builder()
+				.username(user.getUsername())
+				.loginId(user.getLoginId())
+				.email(user.getEmail())
+				.createdDate(user.getCreatedAt())
+				.build();
+	}
 }
