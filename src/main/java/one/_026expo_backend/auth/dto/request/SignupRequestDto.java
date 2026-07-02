@@ -40,6 +40,11 @@ public class SignupRequestDto {
     @NotBlank(message = "이메일은 필수입니다.")
     private String email;
 
+    @Schema(description = "소속", example = "One")
+    @NotBlank
+    @Size(min = 2, max = 20, message = "소속은 2자 이상 20자 이하여야 합니다.")
+    private String team;
+
     @Schema(description = "이용약관 동의 여부", example = "Y", allowableValues = {"Y", "N"})
     @NotNull(message = "이용약관 동의 여부는 필수입니다.")
     private UseYnEnum agreeTerms;
@@ -51,6 +56,7 @@ public class SignupRequestDto {
                 .password(encodedPassword)
                 .email(email)
                 .emailVerified(emailVerified)
+                .team(team)
                 .rememberMe(UseYnEnum.N)
                 .termsAgreed(agreeTerms)
                 .socialProviderId(null)

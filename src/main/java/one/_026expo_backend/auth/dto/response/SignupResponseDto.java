@@ -25,6 +25,9 @@ public class SignupResponseDto {
 	@Schema(description = "이메일", example = "user@example.com")
 	private String email;
 
+    @Schema(description = "소속", example = "One")
+    private String team;
+
 	@Schema(description = "생성일시", example = "2026-05-28T08:12:00")
 	private LocalDateTime createdDate;
 
@@ -33,6 +36,7 @@ public class SignupResponseDto {
 				.username(user.getUsername())
 				.loginId(user.getLoginId())
 				.email(user.getEmail())
+                .team(user.getTeam())
 				.createdDate(user.getCreatedAt())
 				.build();
 	}
