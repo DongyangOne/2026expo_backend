@@ -53,7 +53,8 @@ public class QuizController {
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FOUND, ErrorCode.INVALID_QUIZ_ANSWER, ErrorCode.ALREADY_SOLVED_QUIZ,
                     ErrorCode.QUIZ_SESSION_NOT_FOUND, ErrorCode.INVALID_QUIZ_SEQUENCE, ErrorCode.INVALID_QUIZ_SESSION,
                     ErrorCode.QUIZ_SESSION_READ_FAILED, ErrorCode.QUIZ_SESSION_UPDATE_FAILED, ErrorCode.QUIZ_SESSION_COMPLETE_FAILED,
-                    ErrorCode.INVALID_QUIZ_ID, ErrorCode.MISSING_QUIZ_ANSWER, ErrorCode.MISSING_SESSION_ID, ErrorCode.INVALID_SESSION_FORMAT})
+                    ErrorCode.INVALID_QUIZ_ID, ErrorCode.MISSING_QUIZ_ANSWER, ErrorCode.MISSING_SESSION_ID, ErrorCode.INVALID_SESSION_FORMAT,
+                    ErrorCode.QUIZ_SESSION_STATE_CONFLICT})
     @Operation(summary = "정답 제출 및 다음 퀴즈 조회", description = "요청 정보를 이용하여 현재 문제를 채점 및 기록하고 다음 퀴즈 정보를 가져옵니다.")
     @PostMapping("/sessions/{sessionId}/answers")
     public ResponseEntity<ApiResponse<NextQuizResponseDto>> submitAnswerAndNextQuiz(
