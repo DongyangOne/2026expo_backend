@@ -6,8 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 import one._026expo_backend.global.enums.UseYnEnum;
 
-import java.time.LocalDateTime;
-
 @Getter
 @Builder
 @AllArgsConstructor
@@ -31,4 +29,15 @@ public class LoginResponseDto {
 
     @Schema(description = "RefreshToken", example = "eyJhbGciOiJIUzUxMiJ9...")
     private String refreshToken;
+
+    public static LoginResponseDto of(Long userId, String loginId, String username, UseYnEnum rememberMe, String accessToken, String refreshToken) {
+        return LoginResponseDto.builder()
+                .userId(userId)
+                .loginId(loginId)
+                .username(username)
+                .rememberMe(rememberMe)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
 }
