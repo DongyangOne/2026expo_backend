@@ -1,4 +1,4 @@
-package one._026expo_backend.auth.dto;
+package one._026expo_backend.auth.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
