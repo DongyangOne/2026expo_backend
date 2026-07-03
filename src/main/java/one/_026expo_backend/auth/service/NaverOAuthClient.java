@@ -8,11 +8,9 @@ import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -27,7 +25,6 @@ public class NaverOAuthClient {
 
     private static final URI TOKEN_URI = URI.create("https://nid.naver.com/oauth2.0/token");
     private static final URI USER_INFO_URI = URI.create("https://openapi.naver.com/v1/nid/me");
-    private static final String NAVER_EMAIL_FORM = "@naver.com";
 
     private final HttpClient httpClient = HttpClient.newHttpClient();// 외부 HTTP 요청을 보낼 기본 클라이언트
     private final ObjectMapper objectMapper;// 응답 JSON을 읽기 위한 Jackson 객체
@@ -100,8 +97,8 @@ public class NaverOAuthClient {
         JsonNode body = readJson(response.body());
         JsonNode resp = body.path("response");
         String providerId = resp.path("id").asText(null);
-        String email = resp.path("id").asText(null)+NAVER_EMAIL_FORM; // 네이버 id로 이메일 저장
         String name = resp.path("name").asText(null);
+        String email = resp.path("email").asText(null);
 
         if (providerId == null || providerId.isBlank()) {
             throw new BusinessException(ErrorCode.NAVER_LOGIN_FAILED);
@@ -152,8 +149,5 @@ public class NaverOAuthClient {
 
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
-
-    public record NaverProfile(String providerId, String email, String name) {
     }
 }
