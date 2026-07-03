@@ -78,14 +78,15 @@ public class QrService {
             hasKey = redisTemplate.hasKey(redisKey);
         } catch (RedisConnectionFailureException e) { // 백엔드 서버 <-> Redis 서버 연결 실패
             log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
-            return createAndSendErrorEmitter(qrToken, ErrorCode.REDIS_CONNECTION_ERROR); // 메소드 안에서 에러 응답 공통 규격 처리
+            throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
         }
 
         // 유효하지 않거나 만료된 토큰 검증
         if (Boolean.FALSE.equals(hasKey)) { // 잘못된 토큰 요청
-            return createAndSendErrorEmitter(qrToken, ErrorCode.INVALID_QR_TOKEN); // 메소드 안에서 에러 응답 공통 규격 처리
+            throw new BusinessException(ErrorCode.INVALID_QR_TOKEN);
         }
 
+        // 검증을 통과한 정상적인 경우에만 Emitter 생성
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L); // 5분 동안 유지되는 연결선 생성
 
         emitters.put(qrToken, emitter); // 메모리 맵에 보관
@@ -119,30 +120,6 @@ public class QrService {
         }
 
         return emitter;
-    }
-
-    /**
-     * 에러시 발송할 공통 응답을 위한 임시 이미터 생성 및 전송 로직
-     * * 연결이 유지되어 있을 시 매개변수로 받은 에러를 공통 응답으로 send
-     * * 연결이 끊길 시 백엔드 서버 내에서 로그 처리
-     *
-     * 클라이언트에 정상적으로 에러 응답을 보내면 complete()메소드를 이용해 설정된 수명(0L)에 따라 연결선 정상 종료
-     */
-    private SseEmitter createAndSendErrorEmitter(String qrToken, ErrorCode errorCode) {
-        // 공통 규격을 반환하기 위한 일회용 이미터 생성
-        SseEmitter errorEmitter = new SseEmitter(0L); // 타임아웃 타이머는 try 블록 코드가 끝난 뒤 작동
-        try {
-            // 공통 규격으로 에러 반환
-            ApiResponse<?> errorResponse = ApiResponse.error(errorCode);
-
-            // 프론트가 쉽게 인지하도록 이벤트명("ERROR") 지정
-            errorEmitter.send(SseEmitter.event().name("ERROR").data(errorResponse));
-            errorEmitter.complete();
-        } catch (IOException e) { // 클라이언트 <-> 백엔드 서버 연결 실패
-            // 네트워크 연결이 끊긴 상태이므로 로그만 남김
-            log.warn("연결이 끊어져 에러 메시지 전송 실패. 토큰: {}, 에러: {}", qrToken, errorCode.getMessage());
-        }
-        return errorEmitter;
     }
 
     /**
