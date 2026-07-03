@@ -64,51 +64,78 @@ public class AuthService {
     }
 
     /**
-     * LOCAL 회원가입을 처리한다.
+     * 회원가입을 처리한다.
+     * social이 LOCAL이면 일반 회원가입을, 그 외(카카오/네이버/구글 등)면 소셜 회원가입을 진행한다.
      *
      * @param request 회원가입 요청 정보
      * @return 저장된 사용자 정보를 담은 응답 DTO
-     * @throws BusinessException 아이디 또는 이메일이 중복된 경우, 또는 약관 동의가 Y가 아닌 경우 발생
+     * @throws BusinessException 아이디/이메일/소셜 계정이 중복된 경우, 필수 입력이 누락된 경우, 또는 약관 동의가 Y가 아닌 경우 발생
      */
     @Transactional
     public SignupResponseDto signup(SignupRequestDto request) {
-        String verifiedKey = VERIFIED_PREFIX + request.getEmail();
-        String verifiedStatus = redisTemplate.opsForValue().get(verifiedKey);
-
-        // 값이 존재하고, "인증 성공"일 때만 UseYnEnum.Y로 저장
-        UseYnEnum isVerified = (verifiedStatus != null && verifiedStatus.equals("인증 성공")) ? UseYnEnum.Y : UseYnEnum.N;
-
-        if (isVerified.equals(UseYnEnum.N)) {
-            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED); // 인증되지 않은 이메일인 경우 예외 발생
-        }
-
-        // 중복 아이디 체크
-        if (userRepository.existsByLoginId(request.getLoginId())) {
-            throw new BusinessException(ErrorCode.DUPLICATE_USER);
-        }
-
-        // 중복 이메일 체크
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
-        }
-
         // agreeTerms가 N으로 들어왔을 때를 가정하여 예외 처리
         if (request.getAgreeTerms() != UseYnEnum.Y) {
             throw new BusinessException(ErrorCode.TERMS_NOT_AGREED);
         }
 
-        String hashed = passwordEncoder.encode(request.getPassword());
+        UseYnEnum emailVerified;
+        String hashedPassword;
 
-        Users user = request.toEntity(hashed, isVerified); // 인코딩된 비밀번호, 이메일 인증 여부(미인증 시 예외 처리되므로 Y만 넘어감)
+        if (request.getSocial() == SocialType.LOCAL) {
+            if (request.getLoginId() == null || request.getLoginId().isBlank()
+                    || request.getPassword() == null || request.getPassword().isBlank()) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT); // LOCAL 회원가입인데 아이디/비밀번호가 없는 경우
+            }
 
-        // 회원가입이 성공했으므로 Redis 메일인증 기록 삭제
-        try {
-            redisTemplate.delete(verifiedKey);
-        } catch (Exception e) {
-            // Redis 삭제 실패를 예외처리 할 시 회원가입 트랜잭션 전체가 롤백되므로 로그만 남김
-            log.error("회원가입 완료 후 Redis 인증 증표 삭제 실패 - 대상: {}, 이유: {}", request.getEmail(), e.getMessage());
+            String verifiedKey = VERIFIED_PREFIX + request.getEmail();
+            String verifiedStatus = redisTemplate.opsForValue().get(verifiedKey);
+
+            // 값이 존재하고, "인증 성공"일 때만 UseYnEnum.Y로 저장
+            emailVerified = (verifiedStatus != null && verifiedStatus.equals("인증 성공")) ? UseYnEnum.Y : UseYnEnum.N;
+
+            if (emailVerified.equals(UseYnEnum.N)) {
+                throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED); // 인증되지 않은 이메일인 경우 예외 발생
+            }
+
+            // 중복 아이디 체크
+            if (userRepository.existsByLoginId(request.getLoginId())) {
+                throw new BusinessException(ErrorCode.DUPLICATE_USER);
+            }
+
+            // 중복 이메일 체크
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+            }
+
+            hashedPassword = passwordEncoder.encode(request.getPassword());
+
+            // 회원가입이 성공했으므로 Redis 메일인증 기록 삭제
+            try {
+                redisTemplate.delete(verifiedKey);
+            } catch (Exception e) {
+                // Redis 삭제 실패를 예외처리 할 시 회원가입 트랜잭션 전체가 롤백되므로 로그만 남김
+                log.error("회원가입 완료 후 Redis 인증 증표 삭제 실패 - 대상: {}, 이유: {}", request.getEmail(), e.getMessage());
+            }
+        } else {
+            if (request.getProviderId() == null || request.getProviderId().isBlank()) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT); // 소셜 회원가입인데 providerId가 없는 경우
+            }
+
+            // 이미 가입된 소셜 계정인지 체크
+            if (userRepository.findBySocialTypeAndSocialProviderId(request.getSocial(), request.getProviderId()).isPresent()) {
+                throw new BusinessException(ErrorCode.DUPLICATE_USER);
+            }
+
+            // 중복 이메일 체크
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+            }
+
+            emailVerified = UseYnEnum.Y; // 소셜 제공자가 이미 이메일 인증을 완료한 것으로 간주
+            hashedPassword = null; // 소셜 회원가입은 비밀번호를 사용하지 않음
         }
 
+        Users user = request.toEntity(hashedPassword, emailVerified);
         Users saved = userRepository.save(user);
 
         // 회원가입 시 기본 캐릭터를 레벨 1, 경험치 0으로 지급

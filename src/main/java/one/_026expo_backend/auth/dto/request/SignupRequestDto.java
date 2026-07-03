@@ -1,6 +1,8 @@
 package one._026expo_backend.auth.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +14,7 @@ import lombok.NoArgsConstructor;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.user.domain.Users;
 import one._026expo_backend.user.enums.SocialType;
+import org.springframework.util.StringUtils;
 
 @Getter
 @NoArgsConstructor
@@ -25,14 +28,10 @@ public class SignupRequestDto {
     @Size(min= 2, max = 8, message = "이름은 2자 이상 8자 이하여야 합니다.")
     private String username;
 
-    @Schema(description = "로그인 아이디", example = "user123")
-    @NotBlank(message = "아이디는 필수입니다.")
-    @Size(min= 4, max = 12, message = "아이디는 4자 이상 12자 이하여야 합니다.")
+    @Schema(description = "로그인 아이디 (social이 LOCAL일 때 필수)", example = "user123")
     private String loginId;
 
-    @Schema(description = "비밀번호", example = "password123*")
-    @NotBlank(message = "비밀번호는 필수입니다.")
-    @Size(min = 8, max = 16, message = "비밀번호는 8자 이상 16자 이하여야 합니다.")
+    @Schema(description = "비밀번호 (social이 LOCAL일 때 필수)", example = "password123*")
     private String password;
 
     @Schema(description = "이메일", example = "user@example.com")
@@ -49,18 +48,62 @@ public class SignupRequestDto {
     @NotNull(message = "이용약관 동의 여부는 필수입니다.")
     private UseYnEnum agreeTerms;
 
+    @Schema(description = "회원가입 유형", example = "LOCAL")
+    @NotNull(message = "회원가입 유형은 필수입니다.")
+    private SocialType social;
+
+    @Schema(description = "소셜 고유 아이디", example = "1234567890")
+    private String providerId;
+
+    /**
+     * LOCAL 회원가입일 때만 loginId 형식을 강제해, social별 필수값 분기가 어긋나지 않도록 맞춘다.
+     */
+    @JsonIgnore
+    @AssertTrue(message = "아이디는 4자 이상 12자 이하여야 합니다.")
+    public boolean isLoginIdValid() {
+        if (social != SocialType.LOCAL) {
+            return true;
+        }
+        return StringUtils.hasText(loginId) && loginId.length() >= 4 && loginId.length() <= 12;
+    }
+
+    /**
+     * LOCAL 회원가입일 때만 password 형식을 강제해, social별 필수값 분기가 어긋나지 않도록 맞춘다.
+     */
+    @JsonIgnore
+    @AssertTrue(message = "비밀번호는 8자 이상 16자 이하여야 합니다.")
+    public boolean isPasswordValid() {
+        if (social != SocialType.LOCAL) {
+            return true;
+        }
+        return StringUtils.hasText(password) && password.length() >= 8 && password.length() <= 16;
+    }
+
+    /**
+     * 소셜 회원가입일 때만 providerId를 강제해, social별 필수값 분기가 어긋나지 않도록 맞춘다.
+     */
+    @JsonIgnore
+    @AssertTrue(message = "providerId는 필수이며 255자를 초과할 수 없습니다.")
+    public boolean isProviderIdValid() {
+        if (social == SocialType.LOCAL) {
+            return true;
+        }
+        return StringUtils.hasText(providerId) && providerId.length() <= 255;
+    }
+
     public Users toEntity(String encodedPassword, UseYnEnum emailVerified) {
+        boolean isLocal = social == SocialType.LOCAL;
         return Users.builder()
                 .username(username)
-                .loginId(loginId)
+                .loginId(isLocal ? loginId : null)
                 .password(encodedPassword)
                 .email(email)
                 .emailVerified(emailVerified)
                 .team(team)
                 .rememberMe(UseYnEnum.N)
                 .termsAgreed(agreeTerms)
-                .socialProviderId(null)
-                .socialType(SocialType.LOCAL)
+                .socialProviderId(isLocal ? null : providerId)
+                .socialType(social)
                 .isDeleted(UseYnEnum.N)
                 .deletedAt(null)
                 .build();

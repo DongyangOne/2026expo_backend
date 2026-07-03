@@ -58,13 +58,13 @@ public class AuthController {
     }
 
     /**
-     * LOCAL 회원가입 API
+     * 회원가입 API (LOCAL / 소셜)
      *
      * @param request 유저 회원가입 요청 정보
      * @return 회원가입 된 유저 응답 객체
      */
-    @Operation(summary = "LOCAL 회원가입", description="유저가 요청한 회원가입 정보로 LOCAL 회원가입을 진행합니다.")
-    @ApiErrorExceptions({ErrorCode.INVALID_INPUT, ErrorCode.DUPLICATE_USER, ErrorCode.DUPLICATE_EMAIL, ErrorCode.TERMS_NOT_AGREED, ErrorCode.CHARACTER_NOT_FOUND})
+    @Operation(summary = "회원가입", description="유저가 요청한 회원가입 정보로 회원가입을 진행합니다. social이 LOCAL이면 일반 회원가입, 그 외(KAKAO/NAVER/GOOGLE)면 소셜 회원가입으로 처리되며, 이 경우 providerId가 필수입니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_INPUT, ErrorCode.DUPLICATE_USER, ErrorCode.DUPLICATE_EMAIL, ErrorCode.EMAIL_NOT_VERIFIED, ErrorCode.TERMS_NOT_AGREED, ErrorCode.CHARACTER_NOT_FOUND})
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponseDto>> signup(@Valid @RequestBody SignupRequestDto request) {
         SignupResponseDto response = authService.signup(request);
