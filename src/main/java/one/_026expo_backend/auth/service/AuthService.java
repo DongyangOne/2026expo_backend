@@ -11,11 +11,11 @@ import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.user.domain.Users;
 import one._026expo_backend.auth.dto.SignupResponseDto;
+import one._026expo_backend.auth.dto.request.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.SignupRequestDto;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
-import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
-import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
+import one._026expo_backend.auth.dto.response.RefreshTokenResponseDto;
 import one._026expo_backend.auth.dto.response.AuthLogoutResponseDto;
 import one._026expo_backend.global.security.JwtTokenProvider;
 import one._026expo_backend.user.repository.UserRepository;
@@ -161,6 +161,9 @@ public class AuthService {
 
     /**
      * Refresh Token을 검증한 뒤 Access Token과 Refresh Token을 재발급한다.
+     *
+     * @param request 유저의 기존 리프레시 토큰
+     * @return 갱신된 토큰 응답
      */
     @Transactional
     public RefreshTokenResponseDto refreshToken(RefreshTokenRequestDto request) {
@@ -211,10 +214,7 @@ public class AuthService {
         String newAccessToken = jwtProvider.createAccessToken(user.getId(), role);
         String newRefreshToken = createAndStoreRefreshToken(user, role);
 
-        return RefreshTokenResponseDto.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
-                .build();
+        return RefreshTokenResponseDto.of(newAccessToken, newRefreshToken);
     }
 
     /**

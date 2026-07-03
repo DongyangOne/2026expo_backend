@@ -14,8 +14,8 @@ import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
-import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
-import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
+import one._026expo_backend.auth.dto.request.RefreshTokenRequestDto;
+import one._026expo_backend.auth.dto.response.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailService;
 import one._026expo_backend.auth.service.QrService;
@@ -149,8 +149,8 @@ public class AuthController {
      * Refresh Token 재발급 API
      * 앱에서 저장된 Refresh Token을 전달하면 Access Token과 Refresh Token을 새로 발급합니다.
      *
-     * @param request 리프레시 토큰 요청 데이터
-     * @return 갱신된 사용자 정보와 토큰 응답
+     * @param request 유저의 기존 리프레시 토큰
+     * @return 갱신된 토큰 응답
      */
     @Operation(summary = "Refresh Token 재발급", description =
             "앱에서 전달한 Refresh Token으로 Access Token과 Refresh Token을 재발급합니다. <br>앱에서는 Access Token만 재저장하는 것이 아닌, 새로 발급된 Refresh Token도 함께 재저장해야 합니다."
