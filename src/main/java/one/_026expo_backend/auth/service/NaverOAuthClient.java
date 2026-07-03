@@ -3,6 +3,7 @@ package one._026expo_backend.auth.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.auth.dto.SocialProfileDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,7 +46,7 @@ public class NaverOAuthClient {
     }
 
     // authorization code를 이용해 네이버 액세스 토큰을 먼저 발급
-    public NaverProfile fetchProfile(String code, String redirectUri) {
+    public SocialProfileDto fetchProfile(String code, String redirectUri) {
         String accessToken = requestAccessToken(code, redirectUri);
         return requestProfile(accessToken);
     }
@@ -83,7 +84,7 @@ public class NaverOAuthClient {
         return accessToken;
     }
 
-    private NaverProfile requestProfile(String accessToken) {
+    private SocialProfileDto requestProfile(String accessToken) {
         // 사용자 정보 요청
         HttpRequest request = HttpRequest.newBuilder(USER_INFO_URI)
                 .header("Authorization", "Bearer " + accessToken)
@@ -106,7 +107,7 @@ public class NaverOAuthClient {
             throw new BusinessException(ErrorCode.NAVER_LOGIN_FAILED);
         }
 
-        return new NaverProfile(providerId, email, name);
+        return new SocialProfileDto(providerId, email, name);
     }
 
     private HttpResponse<String> send(HttpRequest request) {

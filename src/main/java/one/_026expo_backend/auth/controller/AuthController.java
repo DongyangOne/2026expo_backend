@@ -138,7 +138,7 @@ public class AuthController {
             "인가코드는 \"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={네이버 CLIENT_ID}&redirect_uri={redirect_uri}&state={앱 STATE 값}\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
     @ApiErrorExceptions({ErrorCode.NAVER_EMAIL_REQUIRED, ErrorCode.NAVER_LOGIN_FAILED, ErrorCode.DELETED_USER})
     @PostMapping("/naver/login")
-    public ResponseEntity<ApiResponse<SocialLoginResponseDto>> naverLogin(@Valid @RequestBody NaverLoginRequestDto requestDto) {
+    public ResponseEntity<ApiResponse<SocialLoginResponseDto>> naverLogin(@Valid @RequestBody SocialLoginRequestDto requestDto) {
         return ResponseEntity.ok(ApiResponse.ok(socialLoginService.naverLogin(requestDto)));
     }
 
