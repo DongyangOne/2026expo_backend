@@ -5,13 +5,13 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class KakaoProfileDto {
+public class SocialProfileDto {
 
     private String providerId;
     private String email;
     private String nickname;
 
-    public static KakaoProfileDto from(String providerId, String email, String nickname) {
-        return new KakaoProfileDto(providerId, email, nickname);
+    public static SocialProfileDto from(String providerId, String email, String nickname) {
+        return new SocialProfileDto(providerId, email, nickname);
     }
 }
