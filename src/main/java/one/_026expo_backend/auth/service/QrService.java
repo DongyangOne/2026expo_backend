@@ -169,13 +169,7 @@ public class QrService {
         redisTemplate.opsForValue().set(tabletRefreshKey, tabletRefreshToken, refreshTokenTtl);
 
         // SSE 전송용 응답 생성
-        QrLoginResponseDto loginResponse = QrLoginResponseDto.builder()
-                .userId(user.getId())
-                .loginId(user.getLoginId())
-                .username(user.getUsername())
-                .accessToken(tabletAccessToken)
-                .refreshToken(tabletRefreshToken)
-                .build();
+        QrLoginResponseDto loginResponse = QrLoginResponseDto.from(user, tabletAccessToken, tabletRefreshToken);
 
         // 연결된 SSE 찾기
         SseEmitter tabletEmitter = emitters.get(qrToken);

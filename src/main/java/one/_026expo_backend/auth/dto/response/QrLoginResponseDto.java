@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import one._026expo_backend.user.domain.Users;
 
 @Getter
 @Builder
@@ -24,4 +25,14 @@ public class QrLoginResponseDto {
 
     @Schema(description = "태블릿 RefreshToken", example = "eyJhbGciOiJIUzUxMiJ9...")
     private String refreshToken;
+
+    public static QrLoginResponseDto from(Users user, String accessToken, String refreshToken) {
+        return QrLoginResponseDto.builder()
+                .userId(user.getId())
+                .loginId(user.getLoginId())
+                .username(user.getUsername())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
 }
