@@ -168,13 +168,8 @@ public class AuthService {
     @Transactional
     public RefreshTokenResponseDto refreshToken(RefreshTokenRequestDto request) {
         String refreshToken = request.getRefreshToken();
-
-        if (refreshToken == null || refreshToken.isBlank()) {
-            // 요청의 refreshToken이 비어있는 경우
-            throw new BusinessException(ErrorCode.INVALID_TOKEN);
-        }
-
         Claims claims;
+        
         try {
             claims = jwtProvider.parseClaims(refreshToken);
         } catch (ExpiredJwtException e) { // 리프레시 토큰 만료
