@@ -5,7 +5,6 @@ import one._026expo_backend.auth.dto.SocialProfileDto;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
 import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
 import one._026expo_backend.auth.dto.request.SocialLoginRequestDto;
-import one._026expo_backend.auth.service.GoogleOAuthClient.GoogleProfile;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.service.NaverOAuthClient.NaverProfile;
 import one._026expo_backend.global.enums.ErrorCode;
@@ -60,9 +59,9 @@ public class SocialLoginService {
      * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 필요 정보
      */
     @Transactional
-    public SocialLoginResponseDto googleLogin(GoogleLoginRequestDto requestDto) {
-        GoogleProfile googleProfile = googleOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
-        SocialProfile profile = new SocialProfile(googleProfile.providerId(), googleProfile.name(), googleProfile.email());
+    public SocialLoginResponseDto googleLogin(SocialLoginRequestDto requestDto) {
+        SocialProfileDto googleProfile = googleOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+        SocialProfile profile = new SocialProfile(googleProfile.getProviderId(), googleProfile.getNickname(), googleProfile.getEmail());
 
         return processSocialLogin(profile, SocialType.GOOGLE, GOOGLE_DEFAULT_USERNAME, requestDto.getRememberMe());
     }

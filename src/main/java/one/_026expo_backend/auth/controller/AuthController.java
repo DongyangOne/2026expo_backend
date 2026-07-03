@@ -124,7 +124,7 @@ public class AuthController {
             "인가코드는 \"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=<구글CLIENT_ID>&redirect_uri=<redirect_uri>&scope=email%20profile\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
     @ApiErrorExceptions({ErrorCode.GOOGLE_EMAIL_REQUIRED, ErrorCode.GOOGLE_LOGIN_FAILED, ErrorCode.DELETED_USER})
     @PostMapping("/google/login")
-    public ResponseEntity<ApiResponse<SocialLoginResponseDto>> googleLogin(@Valid @RequestBody GoogleLoginRequestDto requestDto) {
+    public ResponseEntity<ApiResponse<SocialLoginResponseDto>> googleLogin(@Valid @RequestBody SocialLoginRequestDto requestDto) {
         return ResponseEntity.ok(ApiResponse.ok(socialLoginService.googleLogin(requestDto)));
     }
 
