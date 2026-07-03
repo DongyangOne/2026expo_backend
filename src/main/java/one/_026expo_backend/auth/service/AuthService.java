@@ -38,7 +38,7 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtProvider;
-    private final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
+    private static final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
     private final String VERIFIED_PREFIX = "AUTH:VERIFIED:"; // 이메일 인증 접두사
 
     /**
