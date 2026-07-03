@@ -56,7 +56,7 @@ public class SocialLoginService {
      * GOOGLE 로그인을 처리한다.
      * 구글 계정 식별자로 기존 유저를 조회하고, 없으면 가입 필요 정보만 반환한다.
      *
-     * @param requestDto 카카오 로그인 요청 데이터
+     * @param requestDto 구글 로그인 요청 데이터
      * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 필요 정보
      */
     @Transactional
@@ -71,7 +71,7 @@ public class SocialLoginService {
      * NAVER 로그인을 처리한다.
      * 네이버 계정 식별자로 기존 유저를 조회하고, 없으면 가입 필요 정보만 반환한다.
      *
-     * @param requestDto 카카오 로그인 요청 데이터
+     * @param requestDto 네이버 로그인 요청 데이터
      * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 필요 정보
      */
     @Transactional
