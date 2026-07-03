@@ -25,6 +25,12 @@ public class SocialLoginResponseDto {
     @Schema(description = "이름", example = "홍길동")
     private String username;
 
+    @Schema(description = "이메일", example = "user@example.com")
+    private String email;
+
+    @Schema(description = "회원가입 필요 여부", example = "false")
+    private UseYnEnum needsSignup;
+
     @Schema(description = "자동 로그인 여부", example = "Y")
     private UseYnEnum rememberMe;
 
@@ -34,23 +40,43 @@ public class SocialLoginResponseDto {
     @Schema(description = "RefreshToken", example = "eyJhbGciOiJIUzUxMiJ9...")
     private String refreshToken;
 
+    // 로그인 시 사용
     public static SocialLoginResponseDto of(
-            Long userId,
+        Long userId,
+        String socialProviderId,
+        SocialType socialType,
+        String username,
+        String email,
+        UseYnEnum rememberMe,
+        String accessToken,
+        String refreshToken
+    ) {
+        return SocialLoginResponseDto.builder()
+            .userId(userId)
+            .socialProviderId(socialProviderId)
+            .socialType(socialType)
+            .username(username)
+            .email(email)
+            .needsSignup(UseYnEnum.N)
+            .rememberMe(rememberMe)
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
+            .build();
+    }
+
+    // 회원가입 필요 시 사용
+    public static SocialLoginResponseDto signupRequired(
             String socialProviderId,
             SocialType socialType,
             String username,
-            UseYnEnum rememberMe,
-            String accessToken,
-            String refreshToken
+            String email
     ) {
-        return SocialLoginResponseDto.builder()
-                .userId(userId)
-                .socialProviderId(socialProviderId)
-                .socialType(socialType)
-                .username(username)
-                .rememberMe(rememberMe)
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+         return SocialLoginResponseDto.builder()
+            .socialProviderId(socialProviderId)
+            .socialType(socialType)
+            .username(username)
+            .email(email)
+            .needsSignup(UseYnEnum.Y)
+            .build();
     }
 }

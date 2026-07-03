@@ -106,9 +106,9 @@ public class AuthController {
      * KAKAO 로그인 API
      *
      * @param requestDto 카카오 로그인 요청 데이터
-     * @return 사용자 정보와 토큰을 포함한 로그인 응답
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 정보
      */
-    @Operation(summary = "KAKAO 로그인", description = "카카오 인가 코드로 카카오 계정을 조회하고, 기존 유저가 없으면 회원가입 후 로그인합니다. <br>" +
+    @Operation(summary = "KAKAO 로그인", description = "카카오 인가 코드로 카카오 계정을 조회하고, 기존 유저 존재시 로그인 / 미존재 시 회원가입 정보를 반환합니다. <br>" +
             "인가코드는 \"https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=<카카오REST_API_KEY>&redirect_uri=<redirect_uri>\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
     @ApiErrorExceptions({ErrorCode.KAKAO_EMAIL_REQUIRED, ErrorCode.KAKAO_LOGIN_FAILED, ErrorCode.DELETED_USER})
     @PostMapping("/kakao")
@@ -118,9 +118,12 @@ public class AuthController {
 
     /**
      * GOOGLE 로그인 API
+     *
+     * @param requestDto 구글 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 정보
      */
-    @Operation(summary = "GOOGLE 로그인", description = "구글 인가 코드로 구글 계정을 조회하고, 기존 유저가 없으면 회원가입 후 로그인합니다. <br>" +
-            "인가코드는 \"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={구글CLIENT_ID}&redirect_uri={redirect_uri}&scope=email%20profile\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
+    @Operation(summary = "GOOGLE 로그인", description = "구글 인가 코드로 구글 계정을 조회하고, 기존 유저 존재시 로그인 / 미존재 시 회원가입 정보를 반환합니다. <br>" +
+            "인가코드는 \"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=<구글CLIENT_ID>&redirect_uri=<redirect_uri>&scope=email%20profile\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
     @ApiErrorExceptions({ErrorCode.GOOGLE_EMAIL_REQUIRED, ErrorCode.GOOGLE_LOGIN_FAILED, ErrorCode.DELETED_USER})
     @PostMapping("/google/login")
     public ResponseEntity<ApiResponse<SocialLoginResponseDto>> googleLogin(@Valid @RequestBody GoogleLoginRequestDto requestDto) {
@@ -129,8 +132,11 @@ public class AuthController {
 
     /**
      * NAVER 로그인 API
+     *
+     * @param requestDto 카카오 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 정보
      */
-    @Operation(summary = "NAVER 로그인", description = "네이버 인가 코드로 네이버 계정을 조회하고, 기존 유저가 없으면 회원가입 후 로그인합니다. <br>" +
+    @Operation(summary = "NAVER 로그인", description = "네이버 인가 코드로 네이버 계정을 조회하고, 기존 유저 존재시 로그인 / 미존재 시 회원가입 정보를 반환합니다. <br>" +
             "인가코드는 \"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={네이버 CLIENT_ID}&redirect_uri={redirect_uri}&state={앱 STATE 값}\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
     @ApiErrorExceptions({ErrorCode.NAVER_EMAIL_REQUIRED, ErrorCode.NAVER_LOGIN_FAILED, ErrorCode.DELETED_USER})
     @PostMapping("/naver/login")
