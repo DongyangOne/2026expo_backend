@@ -8,6 +8,10 @@ import one._026expo_backend.auth.dto.request.SocialLoginRequestDto;
 import one._026expo_backend.auth.service.GoogleOAuthClient.GoogleProfile;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.service.NaverOAuthClient.NaverProfile;
+import one._026expo_backend.character.domain.Character;
+import one._026expo_backend.character.domain.UserCharacter;
+import one._026expo_backend.character.repository.CharacterRepository;
+import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
@@ -30,8 +34,11 @@ public class SocialLoginService {
     private static final String KAKAO_DEFAULT_USERNAME = "카카오회원";
     private static final String GOOGLE_DEFAULT_USERNAME = "구글회원";
     private static final String NAVER_DEFAULT_USERNAME = "네이버회원";
+    private static final Long DEFAULT_CHARACTER_ID = 1L; // 회원가입 시 기본 지급되는 캐릭터 id
 
     private final UserRepository userRepository;
+    private final CharacterRepository characterRepository;
+    private final UserCharacterRepository userCharacterRepository;
     private final JwtTokenProvider jwtProvider;
     private final KakaoOAuthClient kakaoOAuthClient;
     private final GoogleOAuthClient googleOAuthClient;
@@ -125,19 +132,25 @@ public class SocialLoginService {
                     }
                     return existingUser;
                 })
-                .orElseGet(() -> userRepository.save(Users.builder() // 신규 회원으로 저장
-                        .username(resolveUsername(profile.name(), defaultUsername))
-                        .loginId(null)
-                        .password(null)
-                        .email(profile.email())
-                        .emailVerified(UseYnEnum.Y)
-                        .rememberMe(rememberMe)
-                        .termsAgreed(UseYnEnum.Y)
-                        .socialProviderId(profile.providerId())
-                        .socialType(socialType)
-                        .isDeleted(UseYnEnum.N)
-                        .deletedAt(null)
-                        .build()));
+                .orElseGet(() -> {
+                    Users newUser = userRepository.save(Users.builder() // 신규 회원으로 저장
+                            .username(resolveUsername(profile.name(), defaultUsername))
+                            .loginId(null)
+                            .password(null)
+                            .email(profile.email())
+                            .emailVerified(UseYnEnum.Y)
+                            .rememberMe(rememberMe)
+                            .termsAgreed(UseYnEnum.Y)
+                            .socialProviderId(profile.providerId())
+                            .socialType(socialType)
+                            .isDeleted(UseYnEnum.N)
+                            .deletedAt(null)
+                            .build());
+
+                    assignDefaultCharacter(newUser); // 신규 회원가입 시 기본 캐릭터 생성
+
+                    return newUser;
+                });
 
         user.updateRememberMe(rememberMe); // 이미 존재하는 경우로 로그인하는 경우 rememberMe 상태 업데이트
 
@@ -153,6 +166,17 @@ public class SocialLoginService {
             accessToken,
             refreshToken
         );
+    }
+
+    /**
+     * 회원가입 시 신규 유저에게 기본 캐릭터를 레벨 1, 경험치 0으로 생성한다.
+     *
+     * @param user 신규 유저 객체
+     */
+    private void assignDefaultCharacter(Users user) {
+        Character defaultCharacter = characterRepository.findById(DEFAULT_CHARACTER_ID)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHARACTER_NOT_FOUND));
+        userCharacterRepository.save(UserCharacter.create(user, defaultCharacter));
     }
 
     /**
