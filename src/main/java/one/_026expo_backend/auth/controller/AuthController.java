@@ -138,9 +138,9 @@ public class AuthController {
      * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 정보
      */
     @Operation(summary = "NAVER 로그인", description = "네이버 인가 코드로 네이버 계정을 조회하고, 기존 유저 존재시 로그인 / 미존재 시 회원가입 정보를 반환합니다. <br>" +
-            "인가코드는 \"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={네이버 CLIENT_ID}&redirect_uri={redirect_uri}&state={앱 STATE 값}\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
+            "인가코드는 \"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=<네이버 CLIENT_ID>&redirect_uri=<redirect_uri>&state=<앱 STATE 값>\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
     @ApiErrorExceptions({ErrorCode.NAVER_EMAIL_REQUIRED, ErrorCode.NAVER_LOGIN_FAILED, ErrorCode.DELETED_USER})
-    @PostMapping("/naver/login")
+    @PostMapping("/naver")
     public ResponseEntity<ApiResponse<SocialLoginResponseDto>> naverLogin(@Valid @RequestBody SocialLoginRequestDto requestDto) {
         return ResponseEntity.ok(ApiResponse.ok(socialLoginService.naverLogin(requestDto)));
     }
