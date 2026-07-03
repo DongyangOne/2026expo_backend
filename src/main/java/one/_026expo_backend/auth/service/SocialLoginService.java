@@ -3,8 +3,8 @@ package one._026expo_backend.auth.service;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.KakaoProfileDto;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
-import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
 import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
+import one._026expo_backend.auth.dto.request.SocialLoginRequestDto;
 import one._026expo_backend.auth.service.GoogleOAuthClient.GoogleProfile;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.service.NaverOAuthClient.NaverProfile;
@@ -42,7 +42,7 @@ public class SocialLoginService {
      * 카카오 계정 식별자로 기존 유저를 조회하고, 없으면 신규 회원으로 생성한다.
      */
     @Transactional
-    public SocialLoginResponseDto kakaoLogin(KakaoLoginRequestDto requestDto) {
+    public SocialLoginResponseDto kakaoLogin(SocialLoginRequestDto requestDto) {
         KakaoProfileDto kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
         SocialProfile profile = new SocialProfile(kakaoProfile.getProviderId(), kakaoProfile.getNickname(), kakaoProfile.getEmail());
 
