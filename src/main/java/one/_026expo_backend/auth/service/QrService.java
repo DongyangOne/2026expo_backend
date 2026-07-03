@@ -43,6 +43,8 @@ public class QrService {
     /**
      * UUID로 QR 생성용 토큰을 생성하고 유효 시간과 함께 Redis에 저장한다.
      * 초기 저장 상태는 대기(PENDING) 상태이며, 3분 후 자동으로 만료된다.
+     *
+     * @return 생성된 QR 토큰
      */
     public QrTokenResponseDto createQrToken() {
         String qrToken = UUID.randomUUID().toString(); // UUID로 토큰 생성
