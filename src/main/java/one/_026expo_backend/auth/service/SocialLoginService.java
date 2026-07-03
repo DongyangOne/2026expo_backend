@@ -1,13 +1,13 @@
 package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.auth.dto.KakaoProfileDto;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
-import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
-import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
+import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
 import one._026expo_backend.auth.service.GoogleOAuthClient.GoogleProfile;
+import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.service.NaverOAuthClient.NaverProfile;
-import one._026expo_backend.auth.service.KakaoOAuthClient.KakaoProfile;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
@@ -43,8 +43,8 @@ public class SocialLoginService {
      */
     @Transactional
     public SocialLoginResponseDto kakaoLogin(KakaoLoginRequestDto requestDto) {
-        KakaoProfile kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
-        SocialProfile profile = new SocialProfile(kakaoProfile.providerId(), kakaoProfile.nickname(), kakaoProfile.email());
+        KakaoProfileDto kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+        SocialProfile profile = new SocialProfile(kakaoProfile.getProviderId(), kakaoProfile.getNickname(), kakaoProfile.getEmail());
 
         return processSocialLogin(profile, SocialType.KAKAO, KAKAO_DEFAULT_USERNAME, requestDto.getRememberMe());
     }
@@ -141,15 +141,15 @@ public class SocialLoginService {
         String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
         String refreshToken = createAndStoreRefreshToken(user, Role.USER);
 
-        return SocialLoginResponseDto.builder()
-                .userId(user.getId())
-                .socialProviderId(user.getSocialProviderId())
-                .socialType(user.getSocialType())
-                .username(user.getUsername())
-                .rememberMe(user.getRememberMe())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        return SocialLoginResponseDto.of(
+            user.getId(),
+            user.getSocialProviderId(),
+            user.getSocialType(),
+            user.getUsername(),
+            user.getRememberMe(),
+            accessToken,
+            refreshToken
+        );
     }
 
     /**

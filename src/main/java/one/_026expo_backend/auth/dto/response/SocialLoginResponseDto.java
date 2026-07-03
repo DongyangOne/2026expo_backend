@@ -33,4 +33,24 @@ public class SocialLoginResponseDto {
 
     @Schema(description = "RefreshToken", example = "eyJhbGciOiJIUzUxMiJ9...")
     private String refreshToken;
+
+    public static SocialLoginResponseDto of(
+            Long userId,
+            String socialProviderId,
+            SocialType socialType,
+            String username,
+            UseYnEnum rememberMe,
+            String accessToken,
+            String refreshToken
+    ) {
+        return SocialLoginResponseDto.builder()
+                .userId(userId)
+                .socialProviderId(socialProviderId)
+                .socialType(socialType)
+                .username(username)
+                .rememberMe(rememberMe)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
 }
