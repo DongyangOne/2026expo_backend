@@ -1,7 +1,7 @@
 package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
-import one._026expo_backend.auth.dto.KakaoProfileDto;
+import one._026expo_backend.auth.dto.SocialProfileDto;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
 import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
 import one._026expo_backend.auth.dto.request.SocialLoginRequestDto;
@@ -46,7 +46,7 @@ public class SocialLoginService {
      */
     @Transactional
     public SocialLoginResponseDto kakaoLogin(SocialLoginRequestDto requestDto) {
-        KakaoProfileDto kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+        SocialProfileDto kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
         SocialProfile profile = new SocialProfile(kakaoProfile.getProviderId(), kakaoProfile.getNickname(), kakaoProfile.getEmail());
 
         return processSocialLogin(profile, SocialType.KAKAO, KAKAO_DEFAULT_USERNAME, requestDto.getRememberMe());
