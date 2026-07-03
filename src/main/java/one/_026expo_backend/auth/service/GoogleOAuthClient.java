@@ -3,6 +3,7 @@ package one._026expo_backend.auth.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.auth.dto.SocialProfileDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,7 +41,7 @@ public class GoogleOAuthClient {
     }
 
     // authorization code를 이용해 구글 액세스 토큰을 먼저 발급
-    public GoogleProfile fetchProfile(String code, String redirectUri) {
+    public SocialProfileDto fetchProfile(String code, String redirectUri) {
         String decodedCode = decodeAuthorizationCode(code); // 입력한 코드를 디코드 하여 보내야 인식
         String accessToken = requestAccessToken(decodedCode, redirectUri);
         return requestProfile(accessToken);
@@ -88,7 +89,7 @@ public class GoogleOAuthClient {
         return accessToken;
     }
 
-    private GoogleProfile requestProfile(String accessToken) {
+    private SocialProfileDto requestProfile(String accessToken) {
         HttpRequest request = HttpRequest.newBuilder(USER_INFO_URI)
                 .header("Authorization", "Bearer " + accessToken)
                 .GET()
@@ -110,7 +111,7 @@ public class GoogleOAuthClient {
             throw new BusinessException(ErrorCode.GOOGLE_LOGIN_FAILED);
         }
 
-        return new GoogleProfile(providerId, email, name);
+        return new SocialProfileDto(providerId, email, name);
     }
     // 실제 HTTP 요청과 예외 처리는 한 곳에서 공통으로 처리한다
     private HttpResponse<String> send(HttpRequest request) {
@@ -161,9 +162,5 @@ public class GoogleOAuthClient {
     // URL 전송용으로 인코딩한다
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
-
-    // 사용자 식별자와 회원 가입에 필요한 정보만 담는 응답용 record
-    public record GoogleProfile(String providerId, String email, String name) {
     }
 }
