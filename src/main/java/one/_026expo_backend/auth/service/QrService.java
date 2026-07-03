@@ -2,6 +2,7 @@ package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.auth.dto.response.QrTokenResponseDto;
 import one._026expo_backend.auth.dto.response.QrLoginResponseDto;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
@@ -43,7 +44,7 @@ public class QrService {
      * UUID로 QR 생성용 토큰을 생성하고 유효 시간과 함께 Redis에 저장한다.
      * 초기 저장 상태는 대기(PENDING) 상태이며, 3분 후 자동으로 만료된다.
      */
-    public String createQrToken() {
+    public QrTokenResponseDto createQrToken() {
         String qrToken = UUID.randomUUID().toString(); // UUID로 토큰 생성
 
         String redisKey = QR_PREFIX + qrToken;// Redis에 저장할 Key 포맷 설정
@@ -59,7 +60,7 @@ public class QrService {
             throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
         }
 
-        return qrToken;
+        return QrTokenResponseDto.of(qrToken);
     }
 
     /**
@@ -108,7 +109,7 @@ public class QrService {
 
         try {
             // SSE는 첫 연결 시 더미 데이터를 전송해야 연결이 유지됨
-            emitter.send(SseEmitter.event().name("INIT").data(ApiResponse.ok("Connected!")));
+            emitter.send(SseEmitter.event().name("INIT").data(ApiResponse.ok("Connected!"))); // 최종 응답이 아니므로 ApiResponse로만 감쌈
         } catch (IOException e) { // 클라이언트 <-> 백엔드 서버 연결선 수립 실패
             log.error("토큰에 대한 SSE 초기화 데이터 전송 실패: {}", qrToken);
             emitters.remove(qrToken);
