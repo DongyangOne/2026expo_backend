@@ -126,8 +126,10 @@ public class QrService {
 
     /**
      * 스마트폰 앱으로부터 QR 로그인 승인 요청을 받아 처리한다.
+     *
      * @param qrToken 스마트폰이 QR에서 인식한 토큰
      * @param userId  모바일 앱이 지닌 유저고유 ID
+     * @return 태블릿용 토큰이 포함된 로그인 정보
      */
     public QrLoginResponseDto approveQrLogin(String qrToken, Long userId) {
         // 로그인 사용자 ID 확인
@@ -202,6 +204,9 @@ public class QrService {
 
     /**
      * RefreshToken의 유효 기간을 계산하는 메서드
+     *
+     * @param tabletRefreshToken 태블릿용 리프레시 토큰
+     * @return 태블릿용 리프레시 토큰의 남은 유효 시간
      */
     private Duration calculateRefreshTokenTtl(String tabletRefreshToken) {
         Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(tabletRefreshToken);
