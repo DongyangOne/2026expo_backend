@@ -126,7 +126,7 @@ public class AuthController {
     @Operation(summary = "GOOGLE 로그인", description = "구글 인가 코드로 구글 계정을 조회하고, 기존 유저 존재시 로그인 / 미존재 시 회원가입 정보를 반환합니다. <br>" +
             "인가코드는 \"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=<구글CLIENT_ID>&redirect_uri=<redirect_uri>&scope=email%20profile\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
     @ApiErrorExceptions({ErrorCode.GOOGLE_EMAIL_REQUIRED, ErrorCode.GOOGLE_LOGIN_FAILED, ErrorCode.DELETED_USER})
-    @PostMapping("/google/login")
+    @PostMapping("/google")
     public ResponseEntity<ApiResponse<SocialLoginResponseDto>> googleLogin(@Valid @RequestBody SocialLoginRequestDto requestDto) {
         return ResponseEntity.ok(ApiResponse.ok(socialLoginService.googleLogin(requestDto)));
     }
