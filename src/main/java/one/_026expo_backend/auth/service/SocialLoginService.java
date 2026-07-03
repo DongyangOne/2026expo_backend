@@ -40,6 +40,9 @@ public class SocialLoginService {
     /**
      * KAKAO 로그인을 처리한다.
      * 카카오 계정 식별자로 기존 유저를 조회하고, 없으면 신규 회원으로 생성한다.
+     *
+     * @param requestDto 카카오 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답
      */
     @Transactional
     public SocialLoginResponseDto kakaoLogin(SocialLoginRequestDto requestDto) {
