@@ -131,7 +131,7 @@ public class AuthController {
     /**
      * NAVER 로그인 API
      *
-     * @param requestDto 카카오 로그인 요청 데이터
+     * @param requestDto 네이버 로그인 요청 데이터
      * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 정보
      */
     @Operation(summary = "NAVER 로그인", description = "네이버 인가 코드로 네이버 계정을 조회하고, 기존 유저 존재시 로그인 / 미존재 시 회원가입 정보를 반환합니다. <br>" +
