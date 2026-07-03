@@ -105,7 +105,7 @@ public class AuthController {
     @Operation(summary = "KAKAO 로그인", description = "카카오 인가 코드로 카카오 계정을 조회하고, 기존 유저가 없으면 회원가입 후 로그인합니다. <br>" +
             "인가코드는 \"https://kauth.kakao.com/oauth/authorize?response_type=code&client_id={카카오REST_API_KEY}&redirect_uri={redirect_uri}\"에 접근해 사용자가 로그인한 뒤 얻을 수 있습니다.")
     @ApiErrorExceptions({ErrorCode.KAKAO_EMAIL_REQUIRED, ErrorCode.KAKAO_LOGIN_FAILED, ErrorCode.DELETED_USER})
-    @PostMapping("/kakao/login")
+    @PostMapping("/kakao")
     public ResponseEntity<ApiResponse<SocialLoginResponseDto>> kakaoLogin(@Valid @RequestBody KakaoLoginRequestDto requestDto) {
         return ResponseEntity.ok(ApiResponse.ok(socialLoginService.kakaoLogin(requestDto)));
     }
