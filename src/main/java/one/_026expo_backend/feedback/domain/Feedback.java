@@ -35,6 +35,6 @@ public class Feedback {
     @Column(name = "feedback_text", columnDefinition = "TEXT")
     private String feedbackText;
 
-    @Column(name = "createdAt", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }
