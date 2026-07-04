@@ -40,20 +40,15 @@ public class FeedbackDetailResponseDto {
 
     public static FeedbackDetailResponseDto of(Feedback feedback, FeedbackDetail detail) {
         boolean isSuccess = feedback.getIsFailed() == UseYnEnum.N;
-        String wasteName = feedback.getWasteType().getDescription();
 
-        String suffix = (wasteName.equals("종이") || wasteName.equals("일반 쓰레기")) ? "를" : "을";
-
-        String generatedTitle = isSuccess ?
-                wasteName + suffix + " 올바르게 분리수거하셨어요." :
-                wasteName + suffix + " 올바르게 버리지 못했어요.";
+        String generatedTitle = feedback.getWasteType().generateTitle(isSuccess);
 
         return FeedbackDetailResponseDto.builder()
                 .feedbackId(feedback.getFeedbackId())
                 .date(feedback.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")))
                 .time(feedback.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm")))
                 .isSuccess(isSuccess)
-                .wasteType(wasteName)
+                .wasteType(feedback.getWasteType().getDescription())
                 .title(generatedTitle)
                 .videoUrl(detail.getFeedbackVideoAddr())
                 .content(detail.getFeedbackContent())

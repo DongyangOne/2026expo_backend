@@ -21,6 +21,13 @@ public class FeedbackDetailService {
     private final FeedbackRepository feedbackRepository;
     private final UserRepository userRepository;
 
+    /**
+     * 피드백 상세 조회 로직
+     *
+     * @param userId 특정 분리수거 기록을 확인하고자 하는 사용자 고유 아이디
+     * @param feedbackId 조회하고자 하는 특정 피드백 id
+     * @return 특정 피드백의 성공 여부, 날짜/시간, 쓰레기 종류 및 분리수거 상세 가이드(영상 URL, 설명 내용)
+     */
     public FeedbackDetailResponseDto getFeedbackDetail(Long userId, Long feedbackId) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
