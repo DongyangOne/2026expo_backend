@@ -47,7 +47,7 @@ public class SwaggerConfig {
         localServer.setDescription("로컬 테스트 서버");
 
         Server prodServer = new Server();
-        prodServer.setUrl("pi.taild40495.ts.net");
+        prodServer.setUrl("https://oneexpo.kro.kr");
         prodServer.setDescription("배포 서버");
 
         return new OpenAPI()
