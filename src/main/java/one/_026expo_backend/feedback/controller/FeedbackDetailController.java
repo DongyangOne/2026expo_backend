@@ -31,7 +31,7 @@ public class FeedbackDetailController {
      * 응답 데이터 : 특정 피드백의 성공 여부, 날짜/시간, 쓰레기 종류 및 분리수거 상세 가이드(영상 URL, 설명 내용)
      */
     @Operation(summary = "피드백 상세 조회", description = "특정 피드백의 상세 정보와 분리수거 가이드 영상/내용을 조회합니다.")
-    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.FEEDBACK_NOT_FOUND, ErrorCode.ACCESS_DENIED, ErrorCode.FEEDBACK_DETAIL_NOT_FOUND})
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.FEEDBACK_NOT_FOUND, ErrorCode.ACCESS_DENIED, ErrorCode.FEEDBACK_DETAIL_NOT_FOUND, ErrorCode.INVALID_INPUT})
     @GetMapping("/{feedbackId}")
     public ResponseEntity<ApiResponse<FeedbackDetailResponseDto>> getFeedbackDetail(
             @AuthenticationPrincipal Long userId,

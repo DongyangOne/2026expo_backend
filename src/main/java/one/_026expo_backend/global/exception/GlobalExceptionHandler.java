@@ -104,4 +104,19 @@ public class GlobalExceptionHandler {
                 .status(ErrorCode.INVALID_INPUT.getStatus())
                 .body(ApiResponse.error(ErrorCode.INVALID_INPUT.getCode(), "요청하신 JSON 데이터의 형식이 올바르지 않습니다."));
     }
+
+    /**
+     * URI 변수(@PathVariable) 또는 요청 파라미터(@RequestParam) 유효성 검증 실패 시 처리
+     * * @Validated와 @Positive 등의 제약 조건 위반 시 발생하는 예외를 가로채어 400 에러로 반환함
+     */
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(jakarta.validation.ConstraintViolationException e) {
+        // 여러 제약 조건 위반 중 첫 번째 메시지만 추출하여 깔끔하게 전달
+        String errorMessage = e.getConstraintViolations().iterator().next().getMessage();
+        log.warn("[CONSTRAINT_VIOLATION] {}", errorMessage);
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(ApiResponse.error(ErrorCode.INVALID_INPUT.getCode(), errorMessage));
+    }
 }
