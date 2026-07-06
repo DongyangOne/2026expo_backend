@@ -181,7 +181,9 @@ public class AuthService {
         return LoginResponseDto.of(
             user.getId(),
             user.getLoginId(),
+            user.getEmail(),
             user.getUsername(),
+            user.getTeam(),
             user.getRememberMe(),
             accessToken,
             refreshToken
