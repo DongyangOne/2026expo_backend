@@ -135,7 +135,7 @@ public class AuthService {
         Users user = request.toEntity(hashedPassword, emailVerified);
         Users saved = userRepository.save(user);
 
-        // 회원가입 시 기본 캐릭터를 레벨 1, 경험치 0으로 지급
+        // 회원가입 시 기본 캐릭터를 레벨 0, 경험치 0으로 지급
         // UserCharacter에서 캐릭터 id 대신 캐릭터 객체를 이용하고 있어 id 1에 해당하는 캐릭터를 먼저 찾음
         Character defaultCharacter = characterRepository.findById(DEFAULT_CHARACTER_ID)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHARACTER_NOT_FOUND));
