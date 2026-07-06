@@ -53,6 +53,11 @@ public enum ErrorCode {
     IMAGE_URL_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR,"IMAGE_URL_GENERATION_FAILED", "MinIO URL 생성에 실패하였습니다."),
     QUIZ_NOT_FINISHED(HttpStatus.BAD_REQUEST, "QUIZ_NOT_FINISHED", "아직 완료되지 않은 퀴즈 세션입니다."),
     QUIZ_RESULT_RECORD_NOT_MATCHED(HttpStatus.CONFLICT, "QUIZ_RESULT_RECORD_NOT_MATCHED", "퀴즈 세션 정보와 풀이 기록이 일치하지 않습니다."),
+    INVALID_QUIZ_ID(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_ID", "잘못된 형식의 퀴즈 아이디를 입력하셨습니다."),
+    MISSING_QUIZ_ANSWER(HttpStatus.BAD_REQUEST, "MISSING_QUIZ_ANSWER", "제출할 퀴즈의 답을 입력해주세요."),
+    MISSING_SESSION_ID(HttpStatus.BAD_REQUEST, "MISSING_SESSION_ID", "제출할 퀴즈의 세션 아이디를 입력해주세요."),
+    INVALID_SESSION_FORMAT(HttpStatus.BAD_REQUEST, "INVALID_SESSION_FORMAT", "잘못된 형식의 세션 아이디를 입력하셨습니다."),
+    QUIZ_SESSION_STATE_CONFLICT(HttpStatus.CONFLICT, "QUIZ_SESSION_STATE_CONFLICT", "퀴즈 진행 상태가 올바르지 않거나 이미 종료된 세션입니다."),
     FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "FEEDBACK_NOT_FOUND", "해당 피드백 기록을 찾을 수 없습니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "해당 피드백에 접근할 권한이 없습니다."),
     FEEDBACK_DETAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "FEEDBACK_DETAIL_NOT_FOUND", "해당 분리수거 가이드 상세 정보를 찾을 수 없습니다.");
