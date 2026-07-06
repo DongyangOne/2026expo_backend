@@ -86,6 +86,20 @@ public class AuthController {
     }
 
     /**
+     * 현재 로그인한 사용자의 로그아웃을 처리한다.
+     *
+     * @param userId 인증된 사용자 식별자
+     * @return 로그아웃 완료 응답
+     */
+    @Operation(summary = "로그아웃", description = "현재 로그인한 사용자의 Refresh Token을 무효화해 로그아웃을 처리합니다.")
+    @ApiErrorExceptions({ErrorCode.UNAUTHORIZED, ErrorCode.USER_NOT_FOUND})
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<AuthLogoutResponseDto>> logout(@CurrentUser Long userId) {
+        AuthLogoutResponseDto response = authService.logout(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
      * KAKAO 로그인 API
      */
     @Operation(summary = "KAKAO 로그인", description = "카카오 인가 코드로 카카오 계정을 조회하고, 기존 유저가 없으면 회원가입 후 로그인합니다. <br>" +

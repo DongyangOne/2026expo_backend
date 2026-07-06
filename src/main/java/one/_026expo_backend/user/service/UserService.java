@@ -5,6 +5,9 @@ import io.minio.MinioClient;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
+import one._026expo_backend.auth.enums.EmailVerificationPurpose;
+import one._026expo_backend.auth.service.EmailService;
 import one._026expo_backend.character.domain.Character;
 import one._026expo_backend.character.domain.UserCharacter;
 import one._026expo_backend.character.repository.UserCharacterRepository;
@@ -14,11 +17,11 @@ import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.service.QuizService;
 import one._026expo_backend.user.domain.Users;
+import one._026expo_backend.user.dto.request.UserEmailVerificationConfirmRequestDto;
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
-import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.CharacterInfo;
-import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.QuizProfileInfo;
-import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecyclingLogInfo;
+import one._026expo_backend.user.dto.response.UserEmailVerificationConfirmResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
+import one._026expo_backend.user.dto.response.UserVerificationEmailSendResponseDto;
 import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,12 +30,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.CharacterInfo;
+import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.QuizProfileInfo;
+import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecyclingLogInfo;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
     private final UserRepository userRepository;
+    private final EmailService emailService;
     private final UserCharacterRepository userCharacterRepository;
     private final QuizService quizService;
     private final FeedbackService feedbackService;
@@ -44,6 +52,9 @@ public class UserService {
 
     @Value("${minio.url-expiry-hours}")
     private int urlExpiryHours;
+
+    @Value("${spring.mail.auth.code-ttl-minutes}")
+    private int authCodeValidMinutes;
 
     /**
      * 로그인한 사용자의 마이페이지 프로필을 조회한다.
@@ -63,6 +74,58 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return UserProfileResponseDto.from(user);
+    }
+
+    @Transactional
+    public UserEmailVerificationConfirmResponseDto confirmEmailVerification(
+            Long userId,
+            UserEmailVerificationConfirmRequestDto requestDto
+    ) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        emailService.verifyCode(
+                user.getId(),
+                user.getEmail(),
+                requestDto.getVerificationCode(),
+                EmailVerificationPurpose.MYPAGE_USER_VERIFICATION
+        );
+
+        return UserEmailVerificationConfirmResponseDto.of(true, "이메일 인증이 완료되었습니다.");
+    }
+
+    /**
+     * 로그인한 사용자의 계정 이메일로 마이페이지 사용자 인증 코드를 발송한다.
+     *
+     * 계정 이메일은 서버에서만 조회해 사용해, 클라이언트가 임의의 이메일 주소로 인증 메일을 보내지 못하게 한다.
+     *
+     * @param userId 인증된 사용자 식별자
+     * @return 마스킹된 이메일 주소와 인증 코드 만료 시간 응답 DTO
+     */
+    @Transactional
+    public UserVerificationEmailSendResponseDto sendVerificationEmail(Long userId) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        validateVerificationEmail(user.getEmail());
+
+        EmailSendResponseDto response = emailService.sendVerificationEmail(
+                user.getEmail(),
+                EmailVerificationPurpose.MYPAGE_USER_VERIFICATION
+        );
+
+        return UserVerificationEmailSendResponseDto.of(
+                maskEmail(response.getEmail()),
+                authCodeValidMinutes * 60
+        );
     }
 
     /**
@@ -127,5 +190,27 @@ public class UserService {
             log.error("MinIO 이미지 주소 생성 실패 - 파일 경로: {}, 이유: {}", imageUrl, e.getMessage());
             throw new BusinessException(ErrorCode.IMAGE_URL_GENERATION_FAILED);
         }
+    }
+
+    private void validateVerificationEmail(String email) {
+        if (email == null || email.isBlank() || !email.contains("@")) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private String maskEmail(String email) {
+        String[] parts = email.split("@", 2);
+        String localPart = parts[0];
+        String domain = parts[1];
+
+        if (localPart.length() == 1) {
+            return "*@" + domain;
+        }
+
+        if (localPart.length() == 2) {
+            return localPart.charAt(0) + "*@" + domain;
+        }
+
+        return localPart.charAt(0) + "****" + localPart.charAt(localPart.length() - 1) + "@" + domain;
     }
 }

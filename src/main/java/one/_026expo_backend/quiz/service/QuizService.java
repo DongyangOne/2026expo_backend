@@ -46,10 +46,18 @@ public class QuizService {
     private final QuizRecordRepository quizRecordRepository;
     private final UserCharacterRepository userCharacterRepository;
 
+    /**
+     * 퀴즈 시작 로직
+     *
+     * @param userId 퀴즈를 시작하는 사용자의 고유 아이디
+     * @param requestDto 퀴즈 개수를 포함하고 있는 dto
+     * @return startQuizResponseDto 생성된 sessionId와 첫번째 문제 정보를 포함하고 있는 dto
+     */
     public StartQuizResponseDto startQuiz(Long userId, StartQuizRequestDto requestDto) {
         //유저 존재여부 예외처리
-        userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
 
         var allQuizIds = new ArrayList<>(quizRepository.findAllQuizIds());
 

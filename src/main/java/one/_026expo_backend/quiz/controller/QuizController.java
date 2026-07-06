@@ -29,13 +29,13 @@ public class QuizController {
     /**
      * 퀴즈 시작 API
      *
-     * api 요청 예시 : POST /api/v1/quiz/start
+     * api 요청 예시 : POST /api/v1/quiz/sessions
      * 요청 데이터 : 퀴즈 개수(quantity)
      * 응답 데이터 : 퀴즈 리스트를 저장하는 redis session id, 첫번째 퀴즈 정보(id, 문제)
      */
     @ApiErrorExceptions({ErrorCode.QUIZ_NOT_FOUND, ErrorCode.NOT_ENOUGH_QUIZ, ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_SESSION_SAVE_FAILED})
     @Operation(summary = "퀴즈 시작", description = "유저가 선택한 퀴즈 개수를 이용하여 퀴즈 id리스트와 첫번째 문제 정보를 불러옵니다.")
-    @PostMapping("/start")
+    @PostMapping("/sessions")
     public ResponseEntity<ApiResponse<StartQuizResponseDto>> startQuiz(
             @AuthenticationPrincipal Long userId,
             @RequestBody @Valid StartQuizRequestDto requestDto
