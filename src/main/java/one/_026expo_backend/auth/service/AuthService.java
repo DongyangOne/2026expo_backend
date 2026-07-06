@@ -16,6 +16,7 @@ import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
 import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
+import one._026expo_backend.auth.dto.response.AuthLogoutResponseDto;
 import one._026expo_backend.global.security.JwtTokenProvider;
 import one._026expo_backend.user.repository.UserRepository;
 import one._026expo_backend.user.enums.SocialType;
@@ -214,6 +215,29 @@ public class AuthService {
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .build();
+    }
+
+    /**
+     * 현재 로그인한 사용자의 로그아웃을 처리한다.
+     *
+     * Access Token은 stateless JWT 구조라 서버에서 즉시 회수하지 못하므로,
+     * 서버에 저장된 Refresh Token을 제거해 재발급 경로를 끊는 방식으로 로그아웃을 완료한다.
+     *
+     * @param userId 인증된 사용자 식별자
+     * @return 로그아웃 완료 메시지
+     */
+    @Transactional
+    public AuthLogoutResponseDto logout(Long userId) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        user.clearRefreshToken();
+
+        return AuthLogoutResponseDto.of("로그아웃이 완료되었습니다.");
     }
 
         /**
