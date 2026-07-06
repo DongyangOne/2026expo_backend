@@ -47,10 +47,18 @@ public class QuizService {
     private final QuizRecordRepository quizRecordRepository;
     private final UserCharacterRepository userCharacterRepository;
 
+    /**
+     * 퀴즈 시작 로직
+     *
+     * @param userId 퀴즈를 시작하는 사용자의 고유 아이디
+     * @param requestDto 퀴즈 개수를 포함하고 있는 dto
+     * @return startQuizResponseDto 생성된 sessionId와 첫번째 문제 정보를 포함하고 있는 dto
+     */
     public StartQuizResponseDto startQuiz(Long userId, StartQuizRequestDto requestDto) {
         //유저 존재여부 예외처리
-        userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
 
         var allQuizIds = new ArrayList<>(quizRepository.findAllQuizIds());
 
@@ -78,14 +86,26 @@ public class QuizService {
         return StartQuizResponseDto.of(sessionId, firstQuiz);
     }
 
+    /**
+     * 퀴즈 정답 제출 및 다음 문제 조회 로직
+     *
+     * @param userId 퀴즈 정답을 제출하는 사용자의 고유 아이디
+     * @param sessionId 현재 진행 중인 퀴즈의 세션 아이디
+     * @param requestDto 현재 퀴즈 id와 정답을 포함하고 있는 dto
+     * @return NextQuizResponseDto 현재 퀴즈에 대한 정답여부와 피드백, 세션의 퀴즈 종료여부, 다음 퀴즈 정보를 포함하고 있는 dto
+     */
     @Transactional
-    public NextQuizResponseDto moveOnQuiz(Long userId, NextQuizRequestDto requestDto) {
+    public NextQuizResponseDto moveOnQuiz(Long userId, String sessionId, NextQuizRequestDto requestDto) {
+        //요청 값 검증 진행
+        requestDto.validate();
+        validateSessionId(sessionId);
+
         //유저 존재여부 예외처리
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         // Redis에서 현재 사용자의 퀴즈 진행 상태를 조회합니다.
-        QuizListSessionDto session = quizSessionRedisRepository.find(userId, requestDto.getSessionId());
+        QuizListSessionDto session = quizSessionRedisRepository.find(userId, sessionId);
         List<Long> quizIds = session.getQuizIds();
         int nextIndex = session.getNextIndex();
 
@@ -94,7 +114,7 @@ public class QuizService {
 
         // 잘못된 범위의 index값일 시 예외처리
         if (currentIndex < 0 || currentIndex >= quizIds.size()) {
-            throw new BusinessException(ErrorCode.QUIZ_SESSION_NOT_FOUND);
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
         }
 
         // 서버 기준으로 현재 풀어야 하는 퀴즈 id
@@ -161,6 +181,7 @@ public class QuizService {
 
         return NextQuizResponseDto.of(nowQuiz, nextQuiz, isCorrect);
     }
+
     /**
      * 로그인한 사용자가 맞춘 문제 수와 전체 문제 수를 반환
      *

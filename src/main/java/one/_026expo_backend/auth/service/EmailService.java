@@ -9,8 +9,11 @@ import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
 import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.ResetTokenResponseDto;
+import one._026expo_backend.auth.enums.EmailVerificationPurpose;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
+import one._026expo_backend.user.domain.Users;
+import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.MailAuthenticationException;
@@ -20,8 +23,6 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import one._026expo_backend.user.repository.UserRepository;
-import one._026expo_backend.user.domain.Users;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -43,7 +44,9 @@ public class EmailService {
     private static final String REDIS_PREFIX = "AUTH:EMAIL:";
     private static final String REDIS_LIMIT_PREFIX = "AUTH:EMAIL:LIMIT:";
     private static final String VERIFIED_PREFIX = "AUTH:VERIFIED:";
+    private static final String USER_VERIFICATION_CONFIRMED_PREFIX = "AUTH:USER_VERIFICATION:CONFIRMED:";
     private static final String RESET_TOKEN_PREFIX = "AUTH:PASSWORD:RESET:";
+    private static final long USER_VERIFICATION_CONFIRMED_TTL_MINUTES = 10L;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -66,7 +69,7 @@ public class EmailService {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
-        EmailAuthInfo authInfo = prepareAuthCode(dto.getEmail());
+        EmailAuthInfo authInfo = prepareAuthCode(dto.getEmail(), EmailVerificationPurpose.SIGN_UP);
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
@@ -80,6 +83,29 @@ public class EmailService {
     }
 
     /**
+     * 마이페이지 사용자 인증용 인증 번호 이메일을 발송합니다.
+     *
+     * purpose를 함께 저장해 기존 이메일 인증 흐름과 Redis 키가 섞이지 않도록 분리합니다.
+     *
+     * @param email 인증 번호를 수신할 이메일 주소
+     * @param purpose 이메일 인증 코드 사용 목적
+     * @return 발송된 이메일 주소와 인증 코드의 만료 시간이 담긴 응답 DTO
+     */
+    public EmailSendResponseDto sendVerificationEmail(String email, EmailVerificationPurpose purpose) {
+        EmailAuthInfo authInfo = prepareAuthCode(email, purpose);
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(email);
+        message.setSubject(EmailTemplate.MYPAGE_USER_VERIFICATION.getSubject());
+        message.setText(EmailTemplate.MYPAGE_USER_VERIFICATION.createContent(authInfo.authCode));
+
+        sendEmailAndHandleExceptions(message, email, authInfo.redisKey, authInfo.limitKey);
+
+        return EmailSendResponseDto.of(email, LocalDateTime.now().plusMinutes(authCodeValidMinutes));
+    }
+
+    /**
      * 회원가입 시, 사용자가 입력한 인증 번호를 검증
      *
      * @param dto 검증 대상 이메일과 사용자가 입력한 인증 번호가 담긴 요청 DTO
@@ -87,7 +113,7 @@ public class EmailService {
      * @throws BusinessException 인증 코드가 만료되었거나 일치하지 않는 경우 발생
      */
     public EmailCheckResponseDto verifyAuthCode(EmailCheckRequestDto dto) {
-        validateAndDeleteAuthCode(dto.getEmail(), dto.getAuthCode());
+        verifyCode(dto.getEmail(), dto.getAuthCode(), EmailVerificationPurpose.SIGN_UP);
 
         // 인증된 이메일이라는 정보만 저장
         String verifiedKey = VERIFIED_PREFIX + dto.getEmail();
@@ -115,7 +141,7 @@ public class EmailService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        EmailAuthInfo authInfo = prepareAuthCode(dto.getEmail());
+        EmailAuthInfo authInfo = prepareAuthCode(dto.getEmail(), EmailVerificationPurpose.FIND_ID);
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
@@ -136,7 +162,7 @@ public class EmailService {
      * @throws BusinessException 인증 코드가 만료되었거나 일치하지 않는 경우 발생
      */
     public FindIdResponseDto verifyFindIdAndGetId(FindIdCheckRequestDto dto) {
-        validateAndDeleteAuthCode(dto.getEmail(), dto.getAuthCode());
+        verifyCode(dto.getEmail(), dto.getAuthCode(), EmailVerificationPurpose.FIND_ID);
 
         try {
             Users user = userRepository.findByEmail(dto.getEmail())
@@ -161,7 +187,7 @@ public class EmailService {
         if (!userRepository.existsByLoginIdAndEmail(dto.getLoginId(), dto.getEmail()))
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
 
-        EmailAuthInfo authInfo = prepareAuthCode(dto.getEmail());
+        EmailAuthInfo authInfo = prepareAuthCode(dto.getEmail(), EmailVerificationPurpose.RESET_PASSWORD);
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
@@ -182,7 +208,7 @@ public class EmailService {
      * @throws BusinessException 인증 코드가 만료되었거나 일치하지 않는 경우 발생
      */
     public ResetTokenResponseDto verifyFindPasswordAndGetToken(FindPasswordCheckRequestDto dto) {
-        validateAndDeleteAuthCode(dto.getEmail(), dto.getAuthCode());
+        verifyCode(dto.getEmail(), dto.getAuthCode(), EmailVerificationPurpose.RESET_PASSWORD);
 
         try {
             Users user = userRepository.findByLoginIdAndEmail(dto.getLoginId(), dto.getEmail())
@@ -238,6 +264,23 @@ public class EmailService {
         }
     }
 
+    public void verifyCode(String email, String authCode, EmailVerificationPurpose purpose) {
+        validateAndDeleteAuthCode(email, authCode, purpose);
+    }
+
+    public void verifyCode(Long userId, String email, String authCode, EmailVerificationPurpose purpose) {
+        verifyCode(email, authCode, purpose);
+
+        if (purpose == EmailVerificationPurpose.MYPAGE_USER_VERIFICATION) {
+            String confirmedKey = USER_VERIFICATION_CONFIRMED_PREFIX + userId + ":" + purpose.name();
+            redisTemplate.opsForValue().set(
+                    confirmedKey,
+                    "인증 성공",
+                    USER_VERIFICATION_CONFIRMED_TTL_MINUTES,
+                    TimeUnit.MINUTES
+            );
+        }
+    }
     private String createAuthCode() {
         SecureRandom random = new SecureRandom();
         return String.valueOf(100000 + random.nextInt(900000));
@@ -275,9 +318,11 @@ public class EmailService {
 
     /**
      * 이메일 발송 전 연속 요청(1분 이내) 차단 여부를 조회하고, 신규 인증 코드 Redis에 저장
+     *
+     * purpose를 함께 저장해 다른 용도의 인증 코드가 재사용되지 않도록 한다.
      */
-    private EmailAuthInfo prepareAuthCode(String email) {
-        String limitKey = REDIS_LIMIT_PREFIX + email;
+    private EmailAuthInfo prepareAuthCode(String email, EmailVerificationPurpose purpose) {
+        String limitKey = buildLimitKey(email, purpose);
         // Redis에 1분 제한 키 등록
         Boolean isSetSuccess = redisTemplate.opsForValue().setIfAbsent(limitKey, "blocked", 1,  TimeUnit.MINUTES);
 
@@ -286,7 +331,7 @@ public class EmailService {
             throw new BusinessException(ErrorCode.TOO_MANY_EMAIL_REQUESTS);
         }
         String authCode = createAuthCode();
-        String redisKey = REDIS_PREFIX + email;
+        String redisKey = buildAuthCodeKey(email, purpose);
 
         // Redis에 정보 저장
         redisTemplate.opsForValue().set(redisKey, authCode, authCodeValidMinutes, TimeUnit.MINUTES);
@@ -299,19 +344,20 @@ public class EmailService {
      *
      * @param email 검증 대상 사용자의 이메일 주소
      * @param authCode 사용자가 입력한 이메일 인증 코드
+     * @param purpose 인증 코드 사용 목적
      * @throws BusinessException 인증코드 만료, 인증코드 불일치 시 발생
      */
-    private void validateAndDeleteAuthCode(String email, String authCode) {
-        String authKey = REDIS_PREFIX + email;
+    private void validateAndDeleteAuthCode(String email, String authCode, EmailVerificationPurpose purpose) {
+        String authKey = buildAuthCodeKey(email, purpose);
         String storedCode = redisTemplate.opsForValue().get(authKey);
 
         if (storedCode == null) {
-            log.warn("이메일 인증 실패 (코드 만료 혹은 이력 없음) - 대상: {}", email);
+            log.warn("이메일 인증 실패 (코드 만료 혹은 이력 없음) - 대상: {}, 목적: {}", email, purpose.name());
             throw new BusinessException(ErrorCode.AUTH_CODE_EXPIRED);
         }
 
         if (!storedCode.equals(authCode)) {
-            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}", email);
+            log.warn("이메일 인증 실패 (코드 불일치) - 대상: {}, 목적: {}", email, purpose.name());
             throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
         }
 
@@ -319,16 +365,25 @@ public class EmailService {
             // 사용이 끝난 인증 코드 삭제
             redisTemplate.delete(authKey);
         } catch (Exception e) {
-            log.error("인증 코드 삭제 중 Redis 오류 발생 - 대상: {}, 이유: {}", email, e.getMessage());
+            log.error("인증 코드 삭제 중 Redis 오류 발생 - 대상: {}, 목적: {}, 이유: {}", email, purpose.name(), e.getMessage());
             throw new BusinessException(ErrorCode.INTERNAL_ERROR);
         }
+    }
+
+    private String buildAuthCodeKey(String email, EmailVerificationPurpose purpose) {
+        return REDIS_PREFIX + purpose.name() + ":" + email;
+    }
+
+    private String buildLimitKey(String email, EmailVerificationPurpose purpose) {
+        return REDIS_LIMIT_PREFIX + purpose.name() + ":" + email;
     }
 
     // 이메일 발송 목적에 따른 제목과 본문을 관리하는 Enum
     private enum EmailTemplate {
         SIGNUP("[2026 ONE Expo] 회원가입 인증 번호 안내", "2026 ONE Expo 회원가입 인증 번호입니다.\n\n"),
         FIND_ID("[2026 ONE Expo] 아이디 찾기 인증 번호 안내", "2026 ONE Expo 아이디 찾기 인증 번호입니다.\n\n"),
-        FIND_PASSWORD("[2026 ONE Expo] 비밀번호 찾기 인증 번호 안내", "2026 ONE Expo 비밀번호 찾기 인증 번호입니다.\n\n");
+        FIND_PASSWORD("[2026 ONE Expo] 비밀번호 찾기 인증 번호 안내", "2026 ONE Expo 비밀번호 찾기 인증 번호입니다.\n\n"),
+        MYPAGE_USER_VERIFICATION("[2026 ONE Expo] 마이페이지 사용자 인증 번호 안내", "2026 ONE Expo 마이페이지 사용자 인증 번호입니다.\n\n");
 
         @Getter
         private final String subject;
