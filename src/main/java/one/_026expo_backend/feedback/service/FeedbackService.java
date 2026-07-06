@@ -49,6 +49,13 @@ public class FeedbackService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 피드백 리스트 조회 로직
+     *
+     * @param userId 피드백 리스트를 조회하고자 하는 사용자 고유 아이디
+     * @param pageRequestDto 조회하고자 하는 피드백 리스트의 페이징 정보
+     * @return 피드백 리스트
+     */
     public PageResponseDto<FeedbackListResponseDto> getFeedbackList(Long userId, PageRequestDto pageRequestDto) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
