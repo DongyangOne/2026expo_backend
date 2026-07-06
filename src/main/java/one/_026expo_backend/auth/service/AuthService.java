@@ -15,11 +15,11 @@ import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.user.domain.Users;
 import one._026expo_backend.auth.dto.response.SignupResponseDto;
+import one._026expo_backend.auth.dto.request.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.request.SignupRequestDto;
 import one._026expo_backend.auth.dto.LoginRequestDto;
 import one._026expo_backend.auth.dto.LoginResponseDto;
-import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
-import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
+import one._026expo_backend.auth.dto.response.RefreshTokenResponseDto;
 import one._026expo_backend.auth.dto.response.AuthLogoutResponseDto;
 import one._026expo_backend.global.security.JwtTokenProvider;
 import one._026expo_backend.user.repository.UserRepository;
@@ -44,7 +44,7 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtProvider;
-    private final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
+    private static final String REFRESH = "REFRESH"; // 토큰 타입 상수 설정
     private static final String VERIFIED_PREFIX = "AUTH:VERIFIED:"; // 이메일 인증 접두사
     private static final Long DEFAULT_CHARACTER_ID = 1L; // 회원가입 시 기본 지급되는 캐릭터 id
 
@@ -194,17 +194,15 @@ public class AuthService {
 
     /**
      * Refresh Token을 검증한 뒤 Access Token과 Refresh Token을 재발급한다.
+     *
+     * @param request 유저의 기존 리프레시 토큰
+     * @return 갱신된 토큰 응답
      */
     @Transactional
     public RefreshTokenResponseDto refreshToken(RefreshTokenRequestDto request) {
         String refreshToken = request.getRefreshToken();
-
-        if (refreshToken == null || refreshToken.isBlank()) {
-            // 요청의 refreshToken이 비어있는 경우
-            throw new BusinessException(ErrorCode.INVALID_TOKEN);
-        }
-
         Claims claims;
+        
         try {
             claims = jwtProvider.parseClaims(refreshToken);
         } catch (ExpiredJwtException e) { // 리프레시 토큰 만료
@@ -244,10 +242,7 @@ public class AuthService {
         String newAccessToken = jwtProvider.createAccessToken(user.getId(), role);
         String newRefreshToken = createAndStoreRefreshToken(user, role);
 
-        return RefreshTokenResponseDto.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
-                .build();
+        return RefreshTokenResponseDto.of(newAccessToken, newRefreshToken);
     }
 
     /**
