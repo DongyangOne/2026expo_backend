@@ -43,7 +43,7 @@ public class SignupRequestDto {
     @NotBlank(message = "이메일은 필수입니다.")
     private String email;
 
-    @Schema(description = "소속", example = "One")
+    @Schema(description = "소속", example = "개발팀")
     @NotBlank
     @Size(min = 2, max = 20, message = "소속은 2자 이상 20자 이하여야 합니다.")
     private String team;
