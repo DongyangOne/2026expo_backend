@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -42,17 +41,8 @@ public class GoogleOAuthClient {
 
     // authorization code를 이용해 구글 액세스 토큰을 먼저 발급
     public SocialProfileDto fetchProfile(String code, String redirectUri) {
-        String decodedCode = decodeAuthorizationCode(code); // 입력한 코드를 디코드 하여 보내야 인식
-        String accessToken = requestAccessToken(decodedCode, redirectUri);
+        String accessToken = requestAccessToken(code, redirectUri);
         return requestProfile(accessToken);
-    }
-
-    private String decodeAuthorizationCode(String code) {
-        if (code == null || code.isBlank()) {
-            return code;
-        }
-
-        return URLDecoder.decode(code, StandardCharsets.UTF_8);
     }
 
     // 구글 토큰 API 호출에 필요한 데이터를 구성
