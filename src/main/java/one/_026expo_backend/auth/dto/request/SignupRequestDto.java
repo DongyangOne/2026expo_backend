@@ -28,10 +28,14 @@ public class SignupRequestDto {
     @Size(min= 2, max = 8, message = "이름은 2자 이상 8자 이하여야 합니다.")
     private String username;
 
-    @Schema(description = "로그인 아이디 (social이 LOCAL일 때 필수)", example = "user123")
+    @Schema(description = "로그인 아이디", example = "user123")
+    @NotBlank(message = "아이디는 필수입니다.")
+    @Size(min = 4, max = 12, message = "아이디는 4자 이상 12자 이하여야 합니다.")
     private String loginId;
 
-    @Schema(description = "비밀번호 (social이 LOCAL일 때 필수)", example = "password123*")
+    @Schema(description = "비밀번호", example = "password123*")
+    @NotBlank(message = "비밀번호는 필수입니다.")
+    @Size(min = 8, max = 16, message = "비밀번호는 8자 이상 16자 이하여야 합니다.")
     private String password;
 
     @Schema(description = "이메일", example = "user@example.com")
@@ -56,30 +60,6 @@ public class SignupRequestDto {
     private String providerId;
 
     /**
-     * LOCAL 회원가입일 때만 loginId 형식을 강제해, social별 필수값 분기가 어긋나지 않도록 맞춘다.
-     */
-    @JsonIgnore
-    @AssertTrue(message = "아이디는 4자 이상 12자 이하여야 합니다.")
-    public boolean isLoginIdValid() {
-        if (social != SocialType.LOCAL) {
-            return true;
-        }
-        return StringUtils.hasText(loginId) && loginId.length() >= 4 && loginId.length() <= 12;
-    }
-
-    /**
-     * LOCAL 회원가입일 때만 password 형식을 강제해, social별 필수값 분기가 어긋나지 않도록 맞춘다.
-     */
-    @JsonIgnore
-    @AssertTrue(message = "비밀번호는 8자 이상 16자 이하여야 합니다.")
-    public boolean isPasswordValid() {
-        if (social != SocialType.LOCAL) {
-            return true;
-        }
-        return StringUtils.hasText(password) && password.length() >= 8 && password.length() <= 16;
-    }
-
-    /**
      * 소셜 회원가입일 때만 providerId를 강제해, social별 필수값 분기가 어긋나지 않도록 맞춘다.
      */
     @JsonIgnore
@@ -95,7 +75,7 @@ public class SignupRequestDto {
         boolean isLocal = social == SocialType.LOCAL;
         return Users.builder()
                 .username(username)
-                .loginId(isLocal ? loginId : null)
+                .loginId(loginId)
                 .password(encodedPassword)
                 .email(email)
                 .emailVerified(emailVerified)

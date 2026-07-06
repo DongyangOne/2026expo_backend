@@ -78,16 +78,27 @@ public class AuthService {
             throw new BusinessException(ErrorCode.TERMS_NOT_AGREED);
         }
 
+        // 아이디/비밀번호 공통으로 필수
+        if (request.getLoginId() == null || request.getLoginId().isBlank()
+                || request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+
+        // 중복 아이디 체크
+        if (userRepository.existsByLoginId(request.getLoginId())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_USER);
+        }
+
+        // 중복 이메일 체크
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
         UseYnEnum emailVerified;
-        String hashedPassword;
+        String verifiedKey = null;
 
         if (request.getSocial() == SocialType.LOCAL) {
-            if (request.getLoginId() == null || request.getLoginId().isBlank()
-                    || request.getPassword() == null || request.getPassword().isBlank()) {
-                throw new BusinessException(ErrorCode.INVALID_INPUT); // LOCAL 회원가입인데 아이디/비밀번호가 없는 경우
-            }
-
-            String verifiedKey = VERIFIED_PREFIX + request.getEmail();
+            verifiedKey = VERIFIED_PREFIX + request.getEmail();
             String verifiedStatus = redisTemplate.opsForValue().get(verifiedKey);
 
             // 값이 존재하고, "인증 성공"일 때만 UseYnEnum.Y로 저장
@@ -95,26 +106,6 @@ public class AuthService {
 
             if (emailVerified.equals(UseYnEnum.N)) {
                 throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED); // 인증되지 않은 이메일인 경우 예외 발생
-            }
-
-            // 중복 아이디 체크
-            if (userRepository.existsByLoginId(request.getLoginId())) {
-                throw new BusinessException(ErrorCode.DUPLICATE_USER);
-            }
-
-            // 중복 이메일 체크
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
-            }
-
-            hashedPassword = passwordEncoder.encode(request.getPassword());
-
-            // 회원가입이 성공했으므로 Redis 메일인증 기록 삭제
-            try {
-                redisTemplate.delete(verifiedKey);
-            } catch (Exception e) {
-                // Redis 삭제 실패를 예외처리 할 시 회원가입 트랜잭션 전체가 롤백되므로 로그만 남김
-                log.error("회원가입 완료 후 Redis 인증 증표 삭제 실패 - 대상: {}, 이유: {}", request.getEmail(), e.getMessage());
             }
         } else {
             if (request.getProviderId() == null || request.getProviderId().isBlank()) {
@@ -126,13 +117,19 @@ public class AuthService {
                 throw new BusinessException(ErrorCode.DUPLICATE_USER);
             }
 
-            // 중복 이메일 체크
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
-            }
-
             emailVerified = UseYnEnum.Y; // 소셜 제공자가 이미 이메일 인증을 완료한 것으로 간주
-            hashedPassword = null; // 소셜 회원가입은 비밀번호를 사용하지 않음
+        }
+
+        String hashedPassword = passwordEncoder.encode(request.getPassword());
+
+        if (verifiedKey != null) {
+            // 회원가입이 성공했으므로 Redis 메일인증 기록 삭제
+            try {
+                redisTemplate.delete(verifiedKey);
+            } catch (Exception e) {
+                // Redis 삭제 실패를 예외처리 할 시 회원가입 트랜잭션 전체가 롤백되므로 로그만 남김
+                log.error("회원가입 완료 후 Redis 인증 증표 삭제 실패 - 대상: {}, 이유: {}", request.getEmail(), e.getMessage());
+            }
         }
 
         Users user = request.toEntity(hashedPassword, emailVerified);
