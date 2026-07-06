@@ -141,7 +141,9 @@ public class SocialLoginService {
                             existingUser.getSocialProviderId(),
                             existingUser.getSocialType(),
                             existingUser.getUsername(),
+                            existingUser.getLoginId(),
                             existingUser.getEmail(),
+                            existingUser.getTeam(),
                             existingUser.getRememberMe(),
                             accessToken,
                             refreshToken
