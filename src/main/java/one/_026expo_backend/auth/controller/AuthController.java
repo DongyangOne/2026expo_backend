@@ -1,8 +1,6 @@
 package one._026expo_backend.auth.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -202,16 +200,8 @@ public class AuthController {
      * @return 실시간 스트리밍 연결 유지를 위한 {@link SseEmitter} (Content-Type: text/event-stream)
      */
     @Operation(summary = "태블릿 QR 로그인 SSE 수립", description = "발급받은 QR 토큰을 기반으로 서버와 끊어지지 않는 실시간 통신 채널을 개설합니다. 앱에서 인증 완료 시 이 채널을 통해 로그인 토큰이 발송됩니다.")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "에러 발생",
-            content = @Content(mediaType = "application/json", examples = {
-                    @ExampleObject(name = "INVALID_QR_TOKEN", value = "{\"success\":false,\"code\":\"INVALID_QR_TOKEN\",\"message\":\"유효하지 않은 QR토큰입니다.\"}")
-            }))
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "에러 발생",
-            content = @Content(mediaType = "application/json", examples = {
-                    @ExampleObject(name = "REDIS_CONNECTION_ERROR", value = "{\"success\":false,\"code\":\"REDIS_CONNECTION_ERROR\",\"message\":\"Redis 서버 연결에 실패했습니다.\"}"),
-                    @ExampleObject(name = "SSE_CONNECTION_ERROR", value = "{\"success\":false,\"code\":\"SSE_CONNECTION_ERROR\",\"message\":\"SSE 채널 생성에 실패했습니다.\"}")
-            }))
-    @GetMapping(value = "/qr/connect/{qrToken}", produces = MediaType.TEXT_EVENT_STREAM_VALUE) // produces = MediaType.TEXT_EVENT_STREAM_VALUE로 SSE 사용 선언
+    // 에러 발생 시 GlobalExceptionHandler가 JSON으로 응답할 수 있도록 application/json도 producible 타입에 포함
+    @GetMapping(value = "/qr/connect/{qrToken}", produces = {MediaType.TEXT_EVENT_STREAM_VALUE, MediaType.APPLICATION_JSON_VALUE}) // produces = MediaType.TEXT_EVENT_STREAM_VALUE로 SSE 사용 선언
     public ResponseEntity<SseEmitter> connectQrSse(@PathVariable String qrToken) {
         SseEmitter emitter = qrService.createSseConnection(qrToken);
         return ResponseEntity.ok(emitter); // SseEmitter 객체는 json 형태 응답이 아니므로 ApiResponse로 감싸지 않음
