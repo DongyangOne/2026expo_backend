@@ -162,6 +162,11 @@ public class AuthService {
         Users user = userRepository.findByLoginIdAndIsDeleted(requestDto.getLoginId(), UseYnEnum.N) // 삭제되지 않은 계정을 아이디로 조회
                 .orElseThrow(() -> new BusinessException(ErrorCode.DELETED_USER)); // 위에서 미존재 아이디를 잡았으므로 삭제 계정
 
+        if (user.getSocialType() != SocialType.LOCAL) {
+            // 아이디는 일치하지만 LOCAL 계정이 아닌 경우
+            throw new BusinessException(ErrorCode.SOCIAL_LOGIN_REQUIRED);
+        }
+
         if (user.getEmailVerified() != UseYnEnum.Y) {
             // 이메일 인증이 완료되지 않은 경우
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
