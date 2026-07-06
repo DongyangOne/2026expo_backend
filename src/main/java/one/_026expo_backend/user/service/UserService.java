@@ -58,6 +58,9 @@ public class UserService {
     @Value("${minio.url-expiry-hours}")
     private int urlExpiryHours;
 
+    @Value("${minio.profile-image-object}")
+    private String profileImageObject;
+
     @Value("${spring.mail.auth.code-ttl-minutes}")
     private int authCodeValidMinutes;
 
@@ -78,7 +81,7 @@ public class UserService {
         Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        return UserProfileResponseDto.from(user);
+        return UserProfileResponseDto.from(user, getMinioImageUrl(profileImageObject));
     }
 
     @Transactional
@@ -122,13 +125,13 @@ public class UserService {
         Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        validateProfileUpdateRequest(requestDto);
         emailService.validateVerificationConfirmed(userId, EmailVerificationPurpose.MYPAGE_USER_VERIFICATION);
+        validateProfileUpdateRequest(requestDto);
 
         updateEmailIfPresent(user, requestDto.getEmail());
         updatePasswordIfPresent(user, requestDto.getPassword(), requestDto.getPasswordConfirm());
 
-        return UserProfileUpdateResponseDto.from(user);
+        return UserProfileUpdateResponseDto.from(user, getMinioImageUrl(profileImageObject));
     }
 
     /**

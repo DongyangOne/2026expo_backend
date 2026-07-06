@@ -297,6 +297,13 @@ public class EmailService {
         if (verifiedStatus == null) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
+
+        try {
+            redisTemplate.delete(confirmedKey);
+        } catch (Exception e) {
+            log.error("마이페이지 사용자 인증 완료 키 삭제 실패 - 사용자 ID: {}, 목적: {}, 이유: {}", userId, purpose.name(), e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
     }
 
     private String createAuthCode() {
