@@ -1,6 +1,8 @@
-package one._026expo_backend.auth.dto;
+package one._026expo_backend.auth.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +14,7 @@ import lombok.NoArgsConstructor;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.user.domain.Users;
 import one._026expo_backend.user.enums.SocialType;
+import org.springframework.util.StringUtils;
 
 @Getter
 @NoArgsConstructor
@@ -27,7 +30,7 @@ public class SignupRequestDto {
 
     @Schema(description = "로그인 아이디", example = "user123")
     @NotBlank(message = "아이디는 필수입니다.")
-    @Size(min= 4, max = 12, message = "아이디는 4자 이상 12자 이하여야 합니다.")
+    @Size(min = 4, max = 12, message = "아이디는 4자 이상 12자 이하여야 합니다.")
     private String loginId;
 
     @Schema(description = "비밀번호", example = "password123*")
@@ -40,21 +43,47 @@ public class SignupRequestDto {
     @NotBlank(message = "이메일은 필수입니다.")
     private String email;
 
+    @Schema(description = "소속", example = "개발팀")
+    @NotBlank
+    @Size(min = 2, max = 20, message = "소속은 2자 이상 20자 이하여야 합니다.")
+    private String team;
+
     @Schema(description = "이용약관 동의 여부", example = "Y", allowableValues = {"Y", "N"})
     @NotNull(message = "이용약관 동의 여부는 필수입니다.")
     private UseYnEnum agreeTerms;
 
+    @Schema(description = "회원가입 유형", example = "LOCAL")
+    @NotNull(message = "회원가입 유형은 필수입니다.")
+    private SocialType social;
+
+    @Schema(description = "소셜 고유 아이디", example = "1234567890")
+    private String providerId;
+
+    /**
+     * 소셜 회원가입일 때만 providerId를 강제해, social별 필수값 분기가 어긋나지 않도록 맞춘다.
+     */
+    @JsonIgnore
+    @AssertTrue(message = "providerId는 필수이며 255자를 초과할 수 없습니다.")
+    public boolean isProviderIdValid() {
+        if (social == SocialType.LOCAL) {
+            return true;
+        }
+        return StringUtils.hasText(providerId) && providerId.length() <= 255;
+    }
+
     public Users toEntity(String encodedPassword, UseYnEnum emailVerified) {
+        boolean isLocal = social == SocialType.LOCAL;
         return Users.builder()
                 .username(username)
                 .loginId(loginId)
                 .password(encodedPassword)
                 .email(email)
                 .emailVerified(emailVerified)
+                .team(team)
                 .rememberMe(UseYnEnum.N)
                 .termsAgreed(agreeTerms)
-                .socialProviderId(null)
-                .socialType(SocialType.LOCAL)
+                .socialProviderId(isLocal ? null : providerId)
+                .socialType(social)
                 .isDeleted(UseYnEnum.N)
                 .deletedAt(null)
                 .build();
