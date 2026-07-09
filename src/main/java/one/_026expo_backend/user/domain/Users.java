@@ -84,6 +84,10 @@ public class Users extends BaseEntity {
         this.password = newPassword;
     }
 
+    public void changeEmail(String newEmail) {
+        this.email = newEmail;
+    }
+
     public void clearRefreshToken() {
         this.refreshToken = null;
         this.refreshExpiredAt = null;
