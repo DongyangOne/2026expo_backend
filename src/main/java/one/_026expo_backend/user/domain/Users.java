@@ -40,6 +40,9 @@ public class Users extends BaseEntity {
     @Column(name = "email_verified", nullable = false, columnDefinition = "ENUM('Y','N')")
     private UseYnEnum emailVerified = UseYnEnum.N;
 
+    @Column(name = "team", nullable = false, length = 20)
+    private String team;
+
     @Enumerated(EnumType.STRING)
     @Column(name="remember_me", nullable = false, columnDefinition = "ENUM('Y','N')")
     private UseYnEnum rememberMe = UseYnEnum.N;

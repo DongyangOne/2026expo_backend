@@ -1,4 +1,4 @@
-package one._026expo_backend.auth.dto;
+package one._026expo_backend.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -16,4 +16,11 @@ public class RefreshTokenResponseDto {
 
     @Schema(description = "RefreshToken", example = "eyJhbGciOiJIUzUxMiJ9...")
     private String refreshToken;
+
+    public static RefreshTokenResponseDto of(String accessToken, String refreshToken) {
+        return RefreshTokenResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
 }

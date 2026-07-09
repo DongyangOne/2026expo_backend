@@ -50,10 +50,15 @@ public enum ErrorCode {
     NOT_ENOUGH_QUIZ(HttpStatus.UNPROCESSABLE_CONTENT, "NOT_ENOUGH_QUIZ", "요청한 개수만큼 퀴즈가 충분하지 않습니다."),
     INVALID_QUIZ_SESSION(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_SESSION", "현재 진행 중인 퀴즈 세션과 일치하지 않습니다."),
     USER_CHARACTER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_CHARACTER_NOT_FOUND", "유저의 캐릭터 정보를 찾을 수 없습니다."),
+    CHARACTER_NOT_FOUND(HttpStatus.NOT_FOUND, "CHARACTER_NOT_FOUND", "캐릭터 정보를 찾을 수 없습니다."),
     IMAGE_URL_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR,"IMAGE_URL_GENERATION_FAILED", "MinIO URL 생성에 실패하였습니다."),
     QUIZ_NOT_FINISHED(HttpStatus.BAD_REQUEST, "QUIZ_NOT_FINISHED", "아직 완료되지 않은 퀴즈 세션입니다."),
-    QUIZ_RESULT_RECORD_NOT_MATCHED(HttpStatus.CONFLICT, "QUIZ_RESULT_RECORD_NOT_MATCHED", "퀴즈 세션 정보와 풀이 기록이 일치하지 않습니다.");
-
+    QUIZ_RESULT_RECORD_NOT_MATCHED(HttpStatus.CONFLICT, "QUIZ_RESULT_RECORD_NOT_MATCHED", "퀴즈 세션 정보와 풀이 기록이 일치하지 않습니다."),
+    INVALID_QUIZ_ID(HttpStatus.BAD_REQUEST, "INVALID_QUIZ_ID", "잘못된 형식의 퀴즈 아이디를 입력하셨습니다."),
+    MISSING_QUIZ_ANSWER(HttpStatus.BAD_REQUEST, "MISSING_QUIZ_ANSWER", "제출할 퀴즈의 답을 입력해주세요."),
+    MISSING_SESSION_ID(HttpStatus.BAD_REQUEST, "MISSING_SESSION_ID", "제출할 퀴즈의 세션 아이디를 입력해주세요."),
+    INVALID_SESSION_FORMAT(HttpStatus.BAD_REQUEST, "INVALID_SESSION_FORMAT", "잘못된 형식의 세션 아이디를 입력하셨습니다."),
+    QUIZ_SESSION_STATE_CONFLICT(HttpStatus.CONFLICT, "QUIZ_SESSION_STATE_CONFLICT", "퀴즈 진행 상태가 올바르지 않거나 이미 종료된 세션입니다.");
 
     private final HttpStatus status;
     private final String code;

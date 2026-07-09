@@ -2,6 +2,7 @@ package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.auth.dto.response.QrTokenResponseDto;
 import one._026expo_backend.auth.dto.response.QrLoginResponseDto;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
@@ -42,8 +43,10 @@ public class QrService {
     /**
      * UUID로 QR 생성용 토큰을 생성하고 유효 시간과 함께 Redis에 저장한다.
      * 초기 저장 상태는 대기(PENDING) 상태이며, 3분 후 자동으로 만료된다.
+     *
+     * @return 생성된 QR 토큰
      */
-    public String createQrToken() {
+    public QrTokenResponseDto createQrToken() {
         String qrToken = UUID.randomUUID().toString(); // UUID로 토큰 생성
 
         String redisKey = QR_PREFIX + qrToken;// Redis에 저장할 Key 포맷 설정
@@ -59,7 +62,7 @@ public class QrService {
             throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
         }
 
-        return qrToken;
+        return QrTokenResponseDto.of(qrToken);
     }
 
     /**
@@ -77,14 +80,15 @@ public class QrService {
             hasKey = redisTemplate.hasKey(redisKey);
         } catch (RedisConnectionFailureException e) { // 백엔드 서버 <-> Redis 서버 연결 실패
             log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
-            return createAndSendErrorEmitter(qrToken, ErrorCode.REDIS_CONNECTION_ERROR); // 메소드 안에서 에러 응답 공통 규격 처리
+            throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
         }
 
         // 유효하지 않거나 만료된 토큰 검증
         if (Boolean.FALSE.equals(hasKey)) { // 잘못된 토큰 요청
-            return createAndSendErrorEmitter(qrToken, ErrorCode.INVALID_QR_TOKEN); // 메소드 안에서 에러 응답 공통 규격 처리
+            throw new BusinessException(ErrorCode.INVALID_QR_TOKEN);
         }
 
+        // 검증을 통과한 정상적인 경우에만 Emitter 생성
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L); // 5분 동안 유지되는 연결선 생성
 
         emitters.put(qrToken, emitter); // 메모리 맵에 보관
@@ -108,7 +112,7 @@ public class QrService {
 
         try {
             // SSE는 첫 연결 시 더미 데이터를 전송해야 연결이 유지됨
-            emitter.send(SseEmitter.event().name("INIT").data(ApiResponse.ok("Connected!")));
+            emitter.send(SseEmitter.event().name("INIT").data(ApiResponse.ok("Connected!"))); // 최종 응답이 아니므로 ApiResponse로만 감쌈
         } catch (IOException e) { // 클라이언트 <-> 백엔드 서버 연결선 수립 실패
             log.error("토큰에 대한 SSE 초기화 데이터 전송 실패: {}", qrToken);
             emitters.remove(qrToken);
@@ -121,33 +125,11 @@ public class QrService {
     }
 
     /**
-     * 에러시 발송할 공통 응답을 위한 임시 이미터 생성 및 전송 로직
-     * * 연결이 유지되어 있을 시 매개변수로 받은 에러를 공통 응답으로 send
-     * * 연결이 끊길 시 백엔드 서버 내에서 로그 처리
-     *
-     * 클라이언트에 정상적으로 에러 응답을 보내면 complete()메소드를 이용해 설정된 수명(0L)에 따라 연결선 정상 종료
-     */
-    private SseEmitter createAndSendErrorEmitter(String qrToken, ErrorCode errorCode) {
-        // 공통 규격을 반환하기 위한 일회용 이미터 생성
-        SseEmitter errorEmitter = new SseEmitter(0L); // 타임아웃 타이머는 try 블록 코드가 끝난 뒤 작동
-        try {
-            // 공통 규격으로 에러 반환
-            ApiResponse<?> errorResponse = ApiResponse.error(errorCode);
-
-            // 프론트가 쉽게 인지하도록 이벤트명("ERROR") 지정
-            errorEmitter.send(SseEmitter.event().name("ERROR").data(errorResponse));
-            errorEmitter.complete();
-        } catch (IOException e) { // 클라이언트 <-> 백엔드 서버 연결 실패
-            // 네트워크 연결이 끊긴 상태이므로 로그만 남김
-            log.warn("연결이 끊어져 에러 메시지 전송 실패. 토큰: {}, 에러: {}", qrToken, errorCode.getMessage());
-        }
-        return errorEmitter;
-    }
-
-    /**
      * 스마트폰 앱으로부터 QR 로그인 승인 요청을 받아 처리한다.
+     *
      * @param qrToken 스마트폰이 QR에서 인식한 토큰
      * @param userId  모바일 앱이 지닌 유저고유 ID
+     * @return 태블릿용 토큰이 포함된 로그인 정보
      */
     public QrLoginResponseDto approveQrLogin(String qrToken, Long userId) {
         // 로그인 사용자 ID 확인
@@ -187,13 +169,7 @@ public class QrService {
         redisTemplate.opsForValue().set(tabletRefreshKey, tabletRefreshToken, refreshTokenTtl);
 
         // SSE 전송용 응답 생성
-        QrLoginResponseDto loginResponse = QrLoginResponseDto.builder()
-                .userId(user.getId())
-                .loginId(user.getLoginId())
-                .username(user.getUsername())
-                .accessToken(tabletAccessToken)
-                .refreshToken(tabletRefreshToken)
-                .build();
+        QrLoginResponseDto loginResponse = QrLoginResponseDto.from(user, tabletAccessToken, tabletRefreshToken);
 
         // 연결된 SSE 찾기
         SseEmitter tabletEmitter = emitters.get(qrToken);
@@ -222,6 +198,9 @@ public class QrService {
 
     /**
      * RefreshToken의 유효 기간을 계산하는 메서드
+     *
+     * @param tabletRefreshToken 태블릿용 리프레시 토큰
+     * @return 태블릿용 리프레시 토큰의 남은 유효 시간
      */
     private Duration calculateRefreshTokenTtl(String tabletRefreshToken) {
         Date refreshTokenExpiration = jwtProvider.getTokenExpirationTime(tabletRefreshToken);

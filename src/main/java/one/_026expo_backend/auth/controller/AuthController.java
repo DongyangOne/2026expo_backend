@@ -1,6 +1,8 @@
 package one._026expo_backend.auth.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +16,8 @@ import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.dto.response.EmailCheckResponseDto;
 import one._026expo_backend.auth.dto.response.EmailSendResponseDto;
-import one._026expo_backend.auth.dto.RefreshTokenRequestDto;
-import one._026expo_backend.auth.dto.RefreshTokenResponseDto;
+import one._026expo_backend.auth.dto.request.RefreshTokenRequestDto;
+import one._026expo_backend.auth.dto.response.RefreshTokenResponseDto;
 import one._026expo_backend.auth.service.AuthService;
 import one._026expo_backend.auth.service.EmailService;
 import one._026expo_backend.auth.service.QrService;
@@ -23,9 +25,9 @@ import one._026expo_backend.auth.service.SocialLoginService;
 import one._026expo_backend.global.config.auth.CurrentUser;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
-import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
-import one._026expo_backend.auth.dto.SignupRequestDto;
-import one._026expo_backend.auth.dto.SignupResponseDto;
+import one._026expo_backend.auth.dto.response.ExistsCheckResponseDto;
+import one._026expo_backend.auth.dto.request.SignupRequestDto;
+import one._026expo_backend.auth.dto.response.SignupResponseDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.UseYnEnum;
 import org.springframework.http.MediaType;
@@ -58,13 +60,13 @@ public class AuthController {
     }
 
     /**
-     * LOCAL 회원가입 API
+     * 회원가입 API (LOCAL / 소셜)
      *
      * @param request 유저 회원가입 요청 정보
      * @return 회원가입 된 유저 응답 객체
      */
-    @Operation(summary = "LOCAL 회원가입", description="유저가 요청한 회원가입 정보로 LOCAL 회원가입을 진행합니다.")
-    @ApiErrorExceptions({ErrorCode.INVALID_INPUT, ErrorCode.DUPLICATE_USER, ErrorCode.DUPLICATE_EMAIL, ErrorCode.TERMS_NOT_AGREED})
+    @Operation(summary = "회원가입", description="유저가 요청한 회원가입 정보로 회원가입을 진행합니다. social이 LOCAL이면 일반 회원가입, 그 외(KAKAO/NAVER/GOOGLE)면 소셜 회원가입으로 처리되며, 이 경우 providerId가 필수입니다.")
+    @ApiErrorExceptions({ErrorCode.INVALID_INPUT, ErrorCode.DUPLICATE_USER, ErrorCode.DUPLICATE_EMAIL, ErrorCode.EMAIL_NOT_VERIFIED, ErrorCode.TERMS_NOT_AGREED, ErrorCode.CHARACTER_NOT_FOUND})
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponseDto>> signup(@Valid @RequestBody SignupRequestDto request) {
         SignupResponseDto response = authService.signup(request);
@@ -149,14 +151,14 @@ public class AuthController {
      * Refresh Token 재발급 API
      * 앱에서 저장된 Refresh Token을 전달하면 Access Token과 Refresh Token을 새로 발급합니다.
      *
-     * @param request 리프레시 토큰 요청 데이터
-     * @return 갱신된 사용자 정보와 토큰 응답
+     * @param request 유저의 기존 리프레시 토큰
+     * @return 갱신된 토큰 응답
      */
     @Operation(summary = "Refresh Token 재발급", description =
             "앱에서 전달한 Refresh Token으로 Access Token과 Refresh Token을 재발급합니다. <br>앱에서는 Access Token만 재저장하는 것이 아닌, 새로 발급된 Refresh Token도 함께 재저장해야 합니다."
     )
     @ApiErrorExceptions({ErrorCode.INVALID_TOKEN, ErrorCode.EXPIRED_REFRESH_TOKEN, ErrorCode.DELETED_USER})
-    @PostMapping("/refresh")
+    @PostMapping("/token")
     public ResponseEntity<ApiResponse<RefreshTokenResponseDto>> refreshToken(@Valid @RequestBody RefreshTokenRequestDto request) {
         return ResponseEntity.ok(ApiResponse.ok(authService.refreshToken(request)));
     }
@@ -186,12 +188,11 @@ public class AuthController {
     @Operation(summary = "QR 코드 생성용 토큰 발급", description = "QR 코드용 토큰을 발급하고 Redis 서버에 저장합니다.")
     @ApiErrorExceptions({ErrorCode.REDIS_CONNECTION_ERROR})
     @PostMapping("/qr/token")
-    public ResponseEntity<QrTokenResponseDto> createQrToken() {
+    public ResponseEntity<ApiResponse<QrTokenResponseDto>> createQrToken() {
         // 서비스 레이어를 호출하여 토큰 생성 및 Redis 저장 로직 수행
-        String qrToken = qrService.createQrToken();
-
+        QrTokenResponseDto qrToken = qrService.createQrToken();
         // 최종 DTO에 담아 응답 반환
-        return ResponseEntity.ok(new QrTokenResponseDto(qrToken));
+        return ResponseEntity.ok(ApiResponse.ok(qrToken));
     }
 
     /**
@@ -201,10 +202,20 @@ public class AuthController {
      * @return 실시간 스트리밍 연결 유지를 위한 {@link SseEmitter} (Content-Type: text/event-stream)
      */
     @Operation(summary = "태블릿 QR 로그인 SSE 수립", description = "발급받은 QR 토큰을 기반으로 서버와 끊어지지 않는 실시간 통신 채널을 개설합니다. 앱에서 인증 완료 시 이 채널을 통해 로그인 토큰이 발송됩니다.")
-    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.SSE_CONNECTION_ERROR})
-    @GetMapping(value = "/qr/connect/{qrToken}", produces = MediaType.TEXT_EVENT_STREAM_VALUE) // produces = MediaType.TEXT_EVENT_STREAM_VALUE로 SSE 사용 선언
-    public SseEmitter connectQrSse(@PathVariable String qrToken) {
-        return qrService.createSseConnection(qrToken);
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "SSE 연결 성공",
+            content = {
+                    @Content(mediaType = "text/event-stream", examples = {
+                            @ExampleObject(name = "INIT", value = "event:INIT\ndata:{\"message\":\"요청에 성공하였습니다.\",\"code\":\"SUCCESS\",\"data\":\"Connected!\",\"success\":true}\n"),
+                            @ExampleObject(name = "LOGIN_SUCCESS", value = "event:LOGIN_SUCCESS\ndata:{\"message\":\"요청에 성공하였습니다.\",\"code\":\"SUCCESS\",\"data\":{\"userId\":1,\"loginId\":\"user123\",\"email\":\"user123@gmail.com\",\"username\":\"홍길동\",\"team\":\"개발팀\",\"accessToken\":\"eyJhbGciOiJIUzUxMiJ9...\",\"refreshToken\":\"eyJhbGciOiJIUzUxMiJ9...\"},\"success\":true}\n")
+                    }),
+                    @Content(mediaType = "application/json") // 스웨거에서 application/json 선택지를 유지하기 위한 용도 (실제 200이 json으로 오진 않음)
+            })
+    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.REDIS_CONNECTION_ERROR})
+    // 에러 발생 시 GlobalExceptionHandler가 JSON으로 응답할 수 있도록 application/json도 producible 타입에 포함
+    @GetMapping(value = "/qr/connect/{qrToken}", produces = {MediaType.TEXT_EVENT_STREAM_VALUE, MediaType.APPLICATION_JSON_VALUE}) // produces = MediaType.TEXT_EVENT_STREAM_VALUE로 SSE 사용 선언
+    public ResponseEntity<SseEmitter> connectQrSse(@PathVariable String qrToken) {
+        SseEmitter emitter = qrService.createSseConnection(qrToken);
+        return ResponseEntity.ok(emitter); // SseEmitter 객체는 json 형태 응답이 아니므로 ApiResponse로 감싸지 않음
     }
 
     /**
