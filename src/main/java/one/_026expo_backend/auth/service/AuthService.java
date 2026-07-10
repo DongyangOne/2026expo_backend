@@ -17,8 +17,8 @@ import one._026expo_backend.user.domain.Users;
 import one._026expo_backend.auth.dto.response.SignupResponseDto;
 import one._026expo_backend.auth.dto.request.RefreshTokenRequestDto;
 import one._026expo_backend.auth.dto.request.SignupRequestDto;
-import one._026expo_backend.auth.dto.LoginRequestDto;
-import one._026expo_backend.auth.dto.LoginResponseDto;
+import one._026expo_backend.auth.dto.request.LoginRequestDto;
+import one._026expo_backend.auth.dto.response.LoginResponseDto;
 import one._026expo_backend.auth.dto.response.RefreshTokenResponseDto;
 import one._026expo_backend.auth.dto.response.AuthLogoutResponseDto;
 import one._026expo_backend.global.security.JwtTokenProvider;
@@ -148,8 +148,9 @@ public class AuthService {
      * LOCAL 로그인을 처리한다.
      * Refresh 토큰을 함께 저장한다.
      *
-     * @param requestDto
-     * @return
+     * @param requestDto 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답
+     * @throws BusinessException 계정이 조회되지 않거나 삭제된 경우, 이메일 인증 미완료, 비밀번호 미일치 시 발생
      */
     @Transactional
     public LoginResponseDto login(LoginRequestDto requestDto) {
@@ -182,14 +183,16 @@ public class AuthService {
         String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
         String refreshToken = createAndStoreRefreshToken(user, Role.USER);
 
-        return LoginResponseDto.builder()
-                .userId(user.getId())
-                .loginId(user.getLoginId())
-                .username(user.getUsername())
-                .rememberMe(user.getRememberMe())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        return LoginResponseDto.of(
+            user.getId(),
+            user.getLoginId(),
+            user.getEmail(),
+            user.getUsername(),
+            user.getTeam(),
+            user.getRememberMe(),
+            accessToken,
+            refreshToken
+        );
     }
 
     /**
