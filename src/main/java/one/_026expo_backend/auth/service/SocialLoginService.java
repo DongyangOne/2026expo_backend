@@ -1,13 +1,13 @@
 package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.auth.dto.SocialProfileDto;
 import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
 import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
-import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
-import one._026expo_backend.auth.dto.request.KakaoLoginRequestDto;
+import one._026expo_backend.auth.dto.request.SocialLoginRequestDto;
 import one._026expo_backend.auth.service.GoogleOAuthClient.GoogleProfile;
+import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
 import one._026expo_backend.auth.service.NaverOAuthClient.NaverProfile;
-import one._026expo_backend.auth.service.KakaoOAuthClient.KakaoProfile;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
@@ -39,19 +39,25 @@ public class SocialLoginService {
 
     /**
      * KAKAO 로그인을 처리한다.
-     * 카카오 계정 식별자로 기존 유저를 조회하고, 없으면 신규 회원으로 생성한다.
+     * 카카오 계정 식별자로 기존 유저를 조회하고, 없으면 가입 필요 정보만 반환한다.
+     *
+     * @param requestDto 카카오 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 필요 정보
      */
     @Transactional
-    public SocialLoginResponseDto kakaoLogin(KakaoLoginRequestDto requestDto) {
-        KakaoProfile kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
-        SocialProfile profile = new SocialProfile(kakaoProfile.providerId(), kakaoProfile.nickname(), kakaoProfile.email());
+    public SocialLoginResponseDto kakaoLogin(SocialLoginRequestDto requestDto) {
+        SocialProfileDto kakaoProfile = kakaoOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+        SocialProfile profile = new SocialProfile(kakaoProfile.getProviderId(), kakaoProfile.getNickname(), kakaoProfile.getEmail());
 
         return processSocialLogin(profile, SocialType.KAKAO, KAKAO_DEFAULT_USERNAME, requestDto.getRememberMe());
     }
 
     /**
      * GOOGLE 로그인을 처리한다.
-     * 구글 계정 식별자로 기존 유저를 조회하고, 없으면 신규 회원으로 생성한다.
+     * 구글 계정 식별자로 기존 유저를 조회하고, 없으면 가입 필요 정보만 반환한다.
+     *
+     * @param requestDto 구글 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 필요 정보
      */
     @Transactional
     public SocialLoginResponseDto googleLogin(GoogleLoginRequestDto requestDto) {
@@ -63,6 +69,10 @@ public class SocialLoginService {
 
     /**
      * NAVER 로그인을 처리한다.
+     * 네이버 계정 식별자로 기존 유저를 조회하고, 없으면 가입 필요 정보만 반환한다.
+     *
+     * @param requestDto 네이버 로그인 요청 데이터
+     * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 필요 정보
      */
     @Transactional
     public SocialLoginResponseDto naverLogin(NaverLoginRequestDto requestDto) {
@@ -115,41 +125,36 @@ public class SocialLoginService {
             if (socialType == SocialType.KAKAO) throw new BusinessException(ErrorCode.KAKAO_EMAIL_REQUIRED);
         }
 
-        Users user = userRepository.findBySocialTypeAndSocialProviderId(socialType, profile.providerId())
-                .map(existingUser -> {
+        return userRepository.findBySocialTypeAndSocialProviderId(socialType, profile.providerId())
+                .map(existingUser -> { // 존재하는 유저인 경우
                     if (existingUser.getIsDeleted() != UseYnEnum.N) { // 삭제된 유저인 경우
                         throw new BusinessException(ErrorCode.DELETED_USER);
                     }
-                    return existingUser;
+
+                    existingUser.updateRememberMe(rememberMe); // 이미 존재하는 경우로 로그인하는 경우 rememberMe 상태 업데이트
+
+                    String accessToken = jwtProvider.createAccessToken(existingUser.getId(), Role.USER);
+                    String refreshToken = createAndStoreRefreshToken(existingUser, Role.USER);
+
+                    return SocialLoginResponseDto.of(
+                            existingUser.getId(),
+                            existingUser.getSocialProviderId(),
+                            existingUser.getSocialType(),
+                            existingUser.getUsername(),
+                            existingUser.getEmail(),
+                            existingUser.getLoginId(),
+                            existingUser.getTeam(),
+                            existingUser.getRememberMe(),
+                            accessToken,
+                            refreshToken
+                    );
                 })
-                .orElseGet(() -> userRepository.save(Users.builder() // 신규 회원으로 저장
-                        .username(resolveUsername(profile.name(), defaultUsername))
-                        .loginId(null)
-                        .password(null)
-                        .email(profile.email())
-                        .emailVerified(UseYnEnum.Y)
-                        .rememberMe(rememberMe)
-                        .termsAgreed(UseYnEnum.Y)
-                        .socialProviderId(profile.providerId())
-                        .socialType(socialType)
-                        .isDeleted(UseYnEnum.N)
-                        .deletedAt(null)
-                        .build()));
-
-        user.updateRememberMe(rememberMe); // 이미 존재하는 경우로 로그인하는 경우 rememberMe 상태 업데이트
-
-        String accessToken = jwtProvider.createAccessToken(user.getId(), Role.USER);
-        String refreshToken = createAndStoreRefreshToken(user, Role.USER);
-
-        return SocialLoginResponseDto.builder()
-                .userId(user.getId())
-                .socialProviderId(user.getSocialProviderId())
-                .socialType(user.getSocialType())
-                .username(user.getUsername())
-                .rememberMe(user.getRememberMe())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+                .orElseGet(() -> SocialLoginResponseDto.signupRequired( // 존재하지 않는 유저인 경우
+                        profile.providerId(),
+                        socialType,
+                        resolveUsername(profile.name(), defaultUsername),
+                        profile.email()
+                ));
     }
 
     /**

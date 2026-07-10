@@ -3,6 +3,7 @@ package one._026expo_backend.auth.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.auth.dto.SocialProfileDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,7 +41,7 @@ public class KakaoOAuthClient {
     }
 
     // authorization code를 이용해 카카오 액세스 토큰을 먼저 발급
-    public KakaoProfile fetchProfile(String code, String redirectUri) {
+    public SocialProfileDto fetchProfile(String code, String redirectUri) {
         String accessToken = requestAccessToken(code, redirectUri);
         return requestProfile(accessToken);
     }
@@ -79,7 +80,7 @@ public class KakaoOAuthClient {
     }
 
     // 액세스 토큰으로 카카오 사용자 정보를 조회한 뒤, 필요한 값만 골라 반환한다
-    private KakaoProfile requestProfile(String accessToken) {
+    private SocialProfileDto requestProfile(String accessToken) {
         // 발급받은 액세스 토큰으로 사용자 정보를 요청한다
         HttpRequest request = HttpRequest.newBuilder(USER_INFO_URI)
                 .header("Authorization", "Bearer " + accessToken)
@@ -107,7 +108,7 @@ public class KakaoOAuthClient {
             throw new BusinessException(ErrorCode.KAKAO_LOGIN_FAILED);
         }
 
-        return new KakaoProfile(providerId, email, nickname);
+        return SocialProfileDto.from(providerId, email, nickname);
     }
 
     // 실제 HTTP 요청과 예외 처리는 한 곳에서 공통으로 처리한다
@@ -150,7 +151,4 @@ public class KakaoOAuthClient {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    // 카카오 사용자 식별자와 회원 가입에 필요한 정보만 담는 응답용 record
-    public record KakaoProfile(String providerId, String email, String nickname) {
-    }
 }
