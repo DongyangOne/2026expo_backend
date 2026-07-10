@@ -2,7 +2,6 @@ package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.SocialProfileDto;
-import one._026expo_backend.auth.dto.request.GoogleLoginRequestDto;
 import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
 import one._026expo_backend.auth.dto.request.SocialLoginRequestDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
