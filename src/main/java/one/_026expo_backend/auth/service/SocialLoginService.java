@@ -2,10 +2,8 @@ package one._026expo_backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.auth.dto.SocialProfileDto;
-import one._026expo_backend.auth.dto.request.NaverLoginRequestDto;
 import one._026expo_backend.auth.dto.request.SocialLoginRequestDto;
 import one._026expo_backend.auth.dto.response.SocialLoginResponseDto;
-import one._026expo_backend.auth.service.NaverOAuthClient.NaverProfile;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.enums.Role;
 import one._026expo_backend.global.enums.UseYnEnum;
@@ -73,9 +71,9 @@ public class SocialLoginService {
      * @return 사용자 정보와 토큰을 포함한 로그인 응답 / 회원가입 필요 정보
      */
     @Transactional
-    public SocialLoginResponseDto naverLogin(NaverLoginRequestDto requestDto) {
-        NaverProfile naverProfile = naverOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
-        SocialProfile profile = new SocialProfile(naverProfile.providerId(), naverProfile.name(), naverProfile.email());
+    public SocialLoginResponseDto naverLogin(SocialLoginRequestDto requestDto) {
+        SocialProfileDto naverProfile = naverOAuthClient.fetchProfile(requestDto.getCode(), requestDto.getRedirectUri());
+        SocialProfile profile = new SocialProfile(naverProfile.getProviderId(), naverProfile.getNickname(), naverProfile.getEmail());
 
         return processSocialLogin(profile, SocialType.NAVER, NAVER_DEFAULT_USERNAME, requestDto.getRememberMe());
     }
