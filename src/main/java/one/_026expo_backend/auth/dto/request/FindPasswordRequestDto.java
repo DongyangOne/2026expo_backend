@@ -13,6 +13,6 @@ public class FindPasswordRequestDto extends EmailSendRequestDto{
      * 기존의 EmailSendRequestDto에 이메일 필드가 담겨있기 때문에 상속하여 사용
      */
     @NotBlank(message = "아이디 입력은 필수입니다.")
-    @Schema(description = "비밀번호를 재설정하려는 아이디", example = "user123")
+    @Schema(description = "비밀번호를 재설정하려는 아이디(본인의 아이디)", example = "your-id")
     private String loginId;
 }

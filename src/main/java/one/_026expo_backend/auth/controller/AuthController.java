@@ -148,7 +148,7 @@ public class AuthController {
     /**
      * 회원가입 이메일 인증번호 발송 API
      */
-    @Operation(summary = "이메일 인증번호 발송", description = "입력한 이메일로 회원가입용 6자리 인증번호를 발송합니다.")
+    @Operation(summary = "이메일 인증번호 발송", description = "입력한 이메일로 회원가입용 6자리 인증번호를 발송합니다.(본인의 메일 주소를 입력)")
     @ApiErrorExceptions({ErrorCode.INVALID_INPUT, ErrorCode.EMAIL_SEND_FAILED})
     @PostMapping("/email/send")
     public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendVerificationEmail(
@@ -181,7 +181,7 @@ public class AuthController {
      * @param dto 이메일 주소와 검증항 인증 번호
      * @return 성공 시 Void 데이터가 포함된 ApiResponse
      */
-    @Operation(summary = "이메일로 전송된 인증 번호 검증", description = "발송된 6자리 인증 번호를 검증합니다.")
+    @Operation(summary = "이메일로 전송된 인증 번호 검증", description = "발송된 6자리 인증 번호를 검증합니다.(본인의 메일 주소와 인증번호를 입력)")
     @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.INTERNAL_ERROR})
     @PostMapping("/email/check")
     public  ResponseEntity<ApiResponse<EmailCheckResponseDto>> checkEmail(
@@ -249,7 +249,7 @@ public class AuthController {
      * @param dto 아이디를 찾고자 하는 사용자의 이메일 주소
      * @return 발송 정보 및 만료 시간
      */
-    @Operation(summary = "아이디 찾기 - 인증번호 발송", description = "가입된 이메일인지 확인한 후, 해당 메일 주소로 아이디 찾기용 6자리 인증번호를 발송합니다.")
+    @Operation(summary = "아이디 찾기 - 인증번호 발송", description = "가입된 이메일인지 확인한 후, 해당 메일 주소로 아이디 찾기용 6자리 인증번호를 발송합니다.(본인의 메일 주소를 입력)")
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.TOO_MANY_EMAIL_REQUESTS, ErrorCode.EMAIL_SEND_FAILED})
     @PostMapping("/find-id/send")
     public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendFindId(
@@ -264,7 +264,7 @@ public class AuthController {
      * @param dto 이메일 주소와 사용자가 입력한 인증 번호
      * @return 검증 성공 시 마스킹 없는 사용자의 오리지널 로그인 ID 반환
      */
-    @Operation(summary = "아이디 찾기 - 인증번호 검증 및 ID 반환", description = "발송된 6자리 인증번호를 검증하고, 성공 시 해당 이메일로 가입된 유저의 로그인 아이디를 반환합니다.")
+    @Operation(summary = "아이디 찾기 - 인증번호 검증 및 ID 반환", description = "발송된 6자리 인증번호를 검증하고, 성공 시 해당 이메일로 가입된 유저의 로그인 아이디를 반환합니다.(본인의 메일 주소를 입력)")
     @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.USER_NOT_FOUND})
     @PostMapping("/find-id/check")
     public ResponseEntity<ApiResponse<FindIdResponseDto>> checkFindId(
@@ -280,7 +280,7 @@ public class AuthController {
      * @param dto 비밀번호를 변경하고자 하는 사용자의 아이디와 비밀번호
      *
      */
-    @Operation(summary = "비밀번호 찾기(재설정) - 인증번호 발송", description = "가입된 사용자인지 확인한 후, 해당 메일 주소로 비밀번호 찾기(재생성)용 6자리 인증번호를 발송합니다.")
+    @Operation(summary = "비밀번호 찾기(재설정) - 인증번호 발송", description = "가입된 사용자인지 확인한 후, 해당 메일 주소로 비밀번호 찾기(재생성)용 6자리 인증번호를 발송합니다.(본인의 아이디와 메일 주소를 입력)")
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.TOO_MANY_EMAIL_REQUESTS, ErrorCode.EMAIL_SEND_FAILED})
     @PostMapping("/find-password/send")
     public ResponseEntity<ApiResponse<EmailSendResponseDto>> sendFindPassword(
@@ -296,7 +296,7 @@ public class AuthController {
      * @param dto 비밀번호를 변경하려는 사용자의 아이디, 이메일, 인증 코드 정보
      */
     @Operation(summary = "비밀번호 찾기(재설정) - 인증번호 검증 및 임시 권한 토큰 발급",
-            description = "발송된 6자리 인증번호를 검증하고, 성공 시 비밀번호 변경을 위한 임시 권한 토큰을 발급합니다.")
+            description = "발송된 6자리 인증번호를 검증하고, 성공 시 비밀번호 변경을 위한 임시 권한 토큰을 발급합니다.(본인의 아이디와 메일 주소를 입력)")
     @ApiErrorExceptions({ErrorCode.AUTH_CODE_EXPIRED, ErrorCode.AUTH_CODE_MISMATCH, ErrorCode.USER_NOT_FOUND})
     @PostMapping("/find-password/check")
     public ResponseEntity<ApiResponse<ResetTokenResponseDto>> checkFindPassword(
@@ -312,7 +312,7 @@ public class AuthController {
      * @param dto 발급받은 임시 권한 토큰과 새로운 비밀번호
      */
     @Operation(summary = "비밀번호 찾기(재설정) - 비밀번호 변경",
-            description = "발급한 임시 권한 토큰을 검증하고, 입력받은 새로운 비밀번호를 암호화하여 변경합니다.")
+            description = "발급한 임시 권한 토큰을 검증하고, 입력받은 새로운 비밀번호를 암호화하여 변경합니다.(발급받은 UUID 토큰과 새로운 비밀번호 입력)")
     @ApiErrorExceptions({ErrorCode.INVALID_TOKEN, ErrorCode.USER_NOT_FOUND})
     @PostMapping("find-password/reset")
     public ResponseEntity<ApiResponse<Void>> resetPassword(

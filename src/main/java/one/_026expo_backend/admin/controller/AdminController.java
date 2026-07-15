@@ -1,6 +1,7 @@
 package one._026expo_backend.admin.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,12 @@ public class AdminController {
     @Operation(summary = "관리자 아이디 중복 체크", description = "adminId를 이용해 존재 여부를 조회합니다.")
     @ApiErrorExceptions({ErrorCode.INVALID_LOGIN_ID})
     @GetMapping("/exists")
-    public ResponseEntity<ApiResponse<ExistsCheckResponseDto>> isExistsAdminId(@RequestParam String adminId) {
+    public ResponseEntity<ApiResponse<ExistsCheckResponseDto>> isExistsAdminId(
+            @Parameter(
+                    description = "중복 체크할 관리자 아이디",
+                    example = "admin123"
+            )
+            @RequestParam String adminId) {
         UseYnEnum exists = adminService.isExistsAdminId(adminId);
         return ResponseEntity.ok(ApiResponse.ok(new ExistsCheckResponseDto(exists)));
     }
