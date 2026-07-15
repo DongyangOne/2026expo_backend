@@ -1,4 +1,4 @@
-package one._026expo_backend.global.config;
+package one._026expo_backend.global.config.minio;
 
 import io.minio.MinioClient;
 import org.springframework.beans.factory.annotation.Value;
