@@ -14,6 +14,6 @@ import lombok.NoArgsConstructor;
 public class EmailSendRequestDto {
     @NotBlank(message = "이메일은 필수 입력 항목입니다.")
     @Email(message = "올바른 이메일 형식이 아닙니다.")
-    @Schema(description = "인증번호를 수신할 이메일 주소(본인의 메일 주소)", example = "your-email@naver.com")
+    @Schema(description = "인증번호를 수신할 이메일 주소(본인의 메일 주소)", example = "flyingdisc1@naver.com")
     private String email;
 }
