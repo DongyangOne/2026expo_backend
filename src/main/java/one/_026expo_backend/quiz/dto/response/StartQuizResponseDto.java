@@ -17,7 +17,7 @@ public class StartQuizResponseDto {
     private String sessionId;
     @Schema(description = "첫번째 문제 퀴즈 id", example = "1")
     private Long quizId;
-    @Schema(description = "첫번째 문제 내용", example = "페트병은 뚜껑과 함께 버려야 한다.")
+    @Schema(description = "첫번째 문제 내용", example = "투명 페트병은 라벨을 떼고 압축한 뒤 뚜껑을 다시 닫아서 배출해야 한다.")
     private String question;
 
     public static StartQuizResponseDto of(
