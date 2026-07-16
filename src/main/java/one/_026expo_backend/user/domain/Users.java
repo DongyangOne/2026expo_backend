@@ -40,6 +40,9 @@ public class Users extends BaseEntity {
     @Column(name = "email_verified", nullable = false, columnDefinition = "ENUM('Y','N')")
     private UseYnEnum emailVerified = UseYnEnum.N;
 
+    @Column(name = "team", nullable = false, length = 20)
+    private String team;
+
     @Enumerated(EnumType.STRING)
     @Column(name="remember_me", nullable = false, columnDefinition = "ENUM('Y','N')")
     private UseYnEnum rememberMe = UseYnEnum.N;
@@ -79,5 +82,19 @@ public class Users extends BaseEntity {
 
     public void changePassword(String newPassword) {
         this.password = newPassword;
+    }
+
+    public void changeEmail(String newEmail) {
+        this.email = newEmail;
+    }
+
+    public void clearRefreshToken() {
+        this.refreshToken = null;
+        this.refreshExpiredAt = null;
+    }
+
+    public void softDelete() {
+        this.isDeleted = UseYnEnum.Y;
+        this.deletedAt = LocalDateTime.now();
     }
 }

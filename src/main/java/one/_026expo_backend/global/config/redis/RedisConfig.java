@@ -1,4 +1,4 @@
-package one._026expo_backend.global.config;
+package one._026expo_backend.global.config.redis;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

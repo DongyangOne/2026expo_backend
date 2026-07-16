@@ -29,6 +29,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final SecurityExceptionHandler securityExceptionHandler;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -53,8 +54,8 @@ public class SecurityConfig {
 
                 // 인증되지 않은 요청은 401 응답을 반환
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                    .authenticationEntryPoint(securityExceptionHandler)
+                    .accessDeniedHandler(securityExceptionHandler)
                 )
 
                 // swagger 및 인증 API는 공개하고 나머지 요청은 인증 필수
