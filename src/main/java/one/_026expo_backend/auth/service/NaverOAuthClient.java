@@ -3,15 +3,14 @@ package one._026expo_backend.auth.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import one._026expo_backend.auth.dto.SocialProfileDto;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -26,7 +25,6 @@ public class NaverOAuthClient {
 
     private static final URI TOKEN_URI = URI.create("https://nid.naver.com/oauth2.0/token");
     private static final URI USER_INFO_URI = URI.create("https://openapi.naver.com/v1/nid/me");
-    private static final String NAVER_EMAIL_FORM = "@naver.com";
 
     private final HttpClient httpClient = HttpClient.newHttpClient();// 외부 HTTP 요청을 보낼 기본 클라이언트
     private final ObjectMapper objectMapper;// 응답 JSON을 읽기 위한 Jackson 객체
@@ -45,7 +43,7 @@ public class NaverOAuthClient {
     }
 
     // authorization code를 이용해 네이버 액세스 토큰을 먼저 발급
-    public NaverProfile fetchProfile(String code, String redirectUri) {
+    public SocialProfileDto fetchProfile(String code, String redirectUri) {
         String accessToken = requestAccessToken(code, redirectUri);
         return requestProfile(accessToken);
     }
@@ -83,7 +81,7 @@ public class NaverOAuthClient {
         return accessToken;
     }
 
-    private NaverProfile requestProfile(String accessToken) {
+    private SocialProfileDto requestProfile(String accessToken) {
         // 사용자 정보 요청
         HttpRequest request = HttpRequest.newBuilder(USER_INFO_URI)
                 .header("Authorization", "Bearer " + accessToken)
@@ -99,14 +97,14 @@ public class NaverOAuthClient {
         JsonNode body = readJson(response.body());
         JsonNode resp = body.path("response");
         String providerId = resp.path("id").asText(null);
-        String email = resp.path("id").asText(null)+NAVER_EMAIL_FORM; // 네이버 id로 이메일 저장
         String name = resp.path("name").asText(null);
+        String email = resp.path("email").asText(null);
 
         if (providerId == null || providerId.isBlank()) {
             throw new BusinessException(ErrorCode.NAVER_LOGIN_FAILED);
         }
 
-        return new NaverProfile(providerId, email, name);
+        return new SocialProfileDto(providerId, email, name);
     }
 
     private HttpResponse<String> send(HttpRequest request) {
@@ -151,8 +149,5 @@ public class NaverOAuthClient {
 
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
-
-    public record NaverProfile(String providerId, String email, String name) {
     }
 }
