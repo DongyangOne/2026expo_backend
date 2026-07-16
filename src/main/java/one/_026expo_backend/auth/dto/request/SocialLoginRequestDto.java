@@ -9,15 +9,15 @@ import one._026expo_backend.global.enums.UseYnEnum;
 
 @Getter
 @NoArgsConstructor
-@Schema(description = "NAVER 로그인 요청 DTO")
-public class NaverLoginRequestDto {
+@Schema(description = "소셜 로그인 요청 DTO")
+public class SocialLoginRequestDto {
 
-    @NotBlank(message = "네이버 인가 코드는 필수입니다.")
-    @Schema(description = "네이버 인가 코드", example = "abcd1234...")
+    @NotBlank(message = "인가 코드는 필수입니다.")
+    @Schema(description = "인가 코드", example = "7y4ZJpT1...")
     private String code;
 
-    @NotBlank(message = "네이버 redirectUri는 필수입니다.")
-    @Schema(description = "네이버 redirect URI", example = "http://localhost:3000/auth/naver/callback")
+    @NotBlank(message = "redirectUri는 필수입니다.")
+    @Schema(description = "redirect URI", example = "http://localhost:3000/auth/kakao/callback")
     private String redirectUri;
 
     @NotNull(message = "자동 로그인 여부는 필수입니다.")

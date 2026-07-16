@@ -11,7 +11,7 @@ import one._026expo_backend.admin.dto.response.AdminLoginResponseDto;
 import one._026expo_backend.admin.dto.response.AdminRefreshTokenResponseDto;
 import one._026expo_backend.admin.dto.response.AdminSignupResponseDto;
 import one._026expo_backend.admin.service.AdminService;
-import one._026expo_backend.auth.dto.ExistsCheckResponseDto;
+import one._026expo_backend.auth.dto.response.ExistsCheckResponseDto;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;

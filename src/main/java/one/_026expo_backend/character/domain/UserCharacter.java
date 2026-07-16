@@ -2,6 +2,8 @@ package one._026expo_backend.character.domain;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import one._026expo_backend.character.enums.LevelPolicy;
@@ -12,6 +14,8 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder
 @Table(name = "user_characters")
 public class UserCharacter {
     @Id
@@ -36,6 +40,15 @@ public class UserCharacter {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    public static UserCharacter create(Users user, Character character) {
+        return UserCharacter.builder()
+                .user(user)
+                .character(character)
+                .currentLevel(1)
+                .currentExp(0)
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
 
     /**
      * 캐릭터 경험치를 증가시키고, 경험치가 해당 레벨의 요구 기준치를 넘으면 레벨을 올립니다.

@@ -1,12 +1,10 @@
-package one._026expo_backend.auth.dto;
+package one._026expo_backend.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import one._026expo_backend.global.enums.UseYnEnum;
-
-import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -19,9 +17,15 @@ public class LoginResponseDto {
 
     @Schema(description = "로그인 아이디", example = "user123")
     private String loginId;
+    
+    @Schema(description = "메일 주소", example = "user123@naver.com")
+    private String email;
 
     @Schema(description = "이름", example = "홍길동")
     private String username;
+
+    @Schema(description = "소속", example = "개발팀")
+    private String team;
 
     @Schema(description = "자동 로그인 여부", example = "Y")
     private UseYnEnum rememberMe;
@@ -31,4 +35,17 @@ public class LoginResponseDto {
 
     @Schema(description = "RefreshToken", example = "eyJhbGciOiJIUzUxMiJ9...")
     private String refreshToken;
+
+    public static LoginResponseDto of(Long userId, String loginId, String email, String username, String team, UseYnEnum rememberMe, String accessToken, String refreshToken) {
+        return LoginResponseDto.builder()
+                .userId(userId)
+                .loginId(loginId)
+                .email(email)
+                .username(username)
+                .team(team)
+                .rememberMe(rememberMe)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
 }

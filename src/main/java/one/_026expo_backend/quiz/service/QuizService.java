@@ -1,12 +1,13 @@
 package one._026expo_backend.quiz.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import one._026expo_backend.character.domain.UserCharacter;
 import one._026expo_backend.character.enums.LevelPolicy;
 import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
-import one._026expo_backend.quiz.dto.request.QuizResultRequestDto;
 import one._026expo_backend.quiz.dto.request.StartQuizRequestDto;
 import one._026expo_backend.quiz.dto.response.QuizResultResponseDto;
 import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
@@ -200,17 +201,27 @@ public class QuizService {
 
     }
 
+    /**
+     * 퀴즈 종료 및 결과 정산 로직
+     *
+     * @param userId 퀴즈를 종료하고 정산받는 사용자의 고유 아이디
+     * @param sessionId 종료할 퀴즈 sessionId
+     * @return QuizResultResponseDto 종료한 퀴즈 관련 정산 정보를 포함하는 dto
+     */
     @Transactional
-    public QuizResultResponseDto resultQuiz(Long userId, QuizResultRequestDto requestDto){
+    public QuizResultResponseDto resultQuiz(Long userId, String sessionId){
+        //요청 값 검증
+        validateSessionId(sessionId);
+
         //유저 존재 여부 예외처리
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         //세션 정보 가져오기
-        QuizListSessionDto session = quizSessionRedisRepository.find(userId, requestDto.getSessionId());
+        QuizListSessionDto session = quizSessionRedisRepository.find(userId, sessionId);
 
         //중복 요청 시 경험치 중복 추가 방지
-        if (!quizSessionRedisRepository.lockReward(requestDto.getSessionId())) {
+        if (!quizSessionRedisRepository.lockReward(sessionId)) {
             throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
         }
 
@@ -221,7 +232,7 @@ public class QuizService {
 
         //퀴즈 문제 개수와 기록 개수를 비교하여 다를 경우 예외처리
         int totalCount = session.getQuizIds().size();
-        long recordCount = quizRecordRepository.countByUsersAndSessionId(user, requestDto.getSessionId());
+        long recordCount = quizRecordRepository.countByUsersAndSessionId(user, sessionId);
         if (recordCount != totalCount) {
             throw new BusinessException(ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED);
         }
@@ -229,14 +240,14 @@ public class QuizService {
         //정답인 문제 개수를 세고 경험치로 환산
         int correctCount = (int) quizRecordRepository.countByUsersAndSessionIdAndIsCorrect(
                 user,
-                requestDto.getSessionId(),
+                sessionId,
                 UseYnEnum.Y
         );
 
         // DB에 저장된 이번 퀴즈 세션의 모든 earnedPoint를 합산해서 획득 경험치로 사용
         int earnedExp = quizRecordRepository.sumEarnedPointByUsersAndSessionId(
                 user,
-                requestDto.getSessionId()
+                sessionId
         );
 
         // 유저 캐릭터 정보 가져오기
@@ -254,7 +265,16 @@ public class QuizService {
         //결과에 따른 격려 및 칭찬 메세지 가져오기
         String resultMessage = QuizResultMessage.pick(correctCount, totalCount);
 
-        quizSessionRedisRepository.delete(userId);
+        //db커밋 성공 후 삭제하도록 예약
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        quizSessionRedisRepository.delete(userId);
+                    }
+                }
+        );
+
         return QuizResultResponseDto.of(
                 totalCount,
                 correctCount,
