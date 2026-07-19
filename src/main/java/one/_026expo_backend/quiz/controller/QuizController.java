@@ -1,6 +1,7 @@
 package one._026expo_backend.quiz.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -79,6 +80,11 @@ public class QuizController {
     public ResponseEntity<ApiResponse<QuizResultResponseDto>> resultQuiz
     (
             @AuthenticationPrincipal Long userId,
+            @Parameter(
+                    name = "sessionId",
+                    description = "정산할 퀴즈의 세션 ID",
+                    example = "550e8400-e29b-41d4-a716-446655440000"
+            )
             @PathVariable("sessionId") String sessionId
     ) {
         QuizResultResponseDto responseDto = quizService.resultQuiz(userId, sessionId);
