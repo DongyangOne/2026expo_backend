@@ -32,7 +32,7 @@ public class FeedbackListResponseDto {
     @Schema(description = "쓰레기 종류", example = "캔")
     private String wasteType;
 
-    @Schema(description = "피드백 내용", example = "캔에 음식물이 들어있었다")
+    @Schema(description = "피드백 내용 (성공 시 null)", example = "캔에 음식물이 들어있었다", nullable = true)
     private String feedbackText;
 
 
