@@ -2,16 +2,25 @@ package one._026expo_backend.user.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.global.config.auth.CurrentUser;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
+import one._026expo_backend.user.dto.request.UserEmailVerificationConfirmRequestDto;
+import one._026expo_backend.user.dto.request.UserProfileUpdateRequestDto;
 import one._026expo_backend.user.dto.response.UserDashboardResponseDto;
+import one._026expo_backend.user.dto.response.UserEmailVerificationConfirmResponseDto;
 import one._026expo_backend.user.dto.response.UserProfileResponseDto;
+import one._026expo_backend.user.dto.response.UserProfileUpdateResponseDto;
+import one._026expo_backend.user.dto.response.UserVerificationEmailSendResponseDto;
 import one._026expo_backend.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,6 +44,75 @@ public class UserController {
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> findOneProfile(@CurrentUser Long userId) {
         UserProfileResponseDto response = userService.findOneProfile(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(
+            summary = "마이페이지 사용자 인증 이메일 전송",
+            description = "로그인한 사용자의 계정 이메일로 6자리 인증 번호를 발송합니다."
+    )
+    @ApiErrorExceptions({
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.TOO_MANY_EMAIL_REQUESTS,
+            ErrorCode.EMAIL_SEND_FAILED,
+            ErrorCode.INTERNAL_ERROR
+    })
+    @PostMapping("/verification/email")
+    public ResponseEntity<ApiResponse<UserVerificationEmailSendResponseDto>> sendVerificationEmail(
+            @CurrentUser Long userId
+    ) {
+        UserVerificationEmailSendResponseDto response = userService.sendVerificationEmail(userId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(
+            summary = "마이페이지 사용자 인증 이메일 코드 검증",
+            description = "로그인한 사용자가 이메일로 받은 인증 코드를 입력하면 마이페이지 사용자 인증 목적의 이메일 코드를 검증합니다."
+    )
+    @ApiErrorExceptions({
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.AUTH_CODE_EXPIRED,
+            ErrorCode.AUTH_CODE_MISMATCH,
+            ErrorCode.INTERNAL_ERROR
+    })
+    @PostMapping("/verification/email/confirm")
+    public ResponseEntity<ApiResponse<UserEmailVerificationConfirmResponseDto>> confirmEmailVerification(
+            @CurrentUser Long userId,
+            @Valid @RequestBody UserEmailVerificationConfirmRequestDto requestDto
+    ) {
+        UserEmailVerificationConfirmResponseDto response =
+                userService.confirmEmailVerification(userId, requestDto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 로그인한 사용자의 마이페이지 프로필 정보를 수정한다.
+     *
+     * 수정 가능한 값은 이메일과 비밀번호만 허용해, 계정 식별값이나 화면 미지원 필드는 임의 변경되지 않도록 한다.
+     *
+     * @param userId 인증된 사용자 식별자
+     * @param requestDto 프로필 수정 요청 정보
+     * @return 수정된 마이페이지 프로필 응답
+     */
+    @Operation(summary = "마이페이지 프로필 수정", description = "로그인한 사용자의 마이페이지 프로필 정보 중 이메일과 비밀번호를 수정합니다.")
+    @ApiErrorExceptions({
+            ErrorCode.UNAUTHORIZED,
+            ErrorCode.USER_NOT_FOUND,
+            ErrorCode.EMAIL_NOT_VERIFIED,
+            ErrorCode.DUPLICATE_EMAIL,
+            ErrorCode.INVALID_INPUT,
+            ErrorCode.PASSWORD_MISMATCH
+    })
+    @PatchMapping("/profile")
+    public ResponseEntity<ApiResponse<UserProfileUpdateResponseDto>> updateProfile(
+            @CurrentUser Long userId,
+            @Valid @RequestBody UserProfileUpdateRequestDto requestDto
+    ) {
+        UserProfileUpdateResponseDto response = userService.updateProfile(userId, requestDto);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 

@@ -9,4 +9,8 @@ import lombok.Getter;
 public class QrTokenResponseDto {
     @Schema(description = "생성된 QR용 토큰", example = "5edf4094-23...")
     private String qrToken;
+
+    public static QrTokenResponseDto of(String qrToken) {
+        return new QrTokenResponseDto(qrToken);
+    }
 }
