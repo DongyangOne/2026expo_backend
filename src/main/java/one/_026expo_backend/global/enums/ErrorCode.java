@@ -58,7 +58,8 @@ public enum ErrorCode {
     MISSING_QUIZ_ANSWER(HttpStatus.BAD_REQUEST, "MISSING_QUIZ_ANSWER", "제출할 퀴즈의 답을 입력해주세요."),
     MISSING_SESSION_ID(HttpStatus.BAD_REQUEST, "MISSING_SESSION_ID", "제출할 퀴즈의 세션 아이디를 입력해주세요."),
     INVALID_SESSION_FORMAT(HttpStatus.BAD_REQUEST, "INVALID_SESSION_FORMAT", "잘못된 형식의 세션 아이디를 입력하셨습니다."),
-    QUIZ_SESSION_STATE_CONFLICT(HttpStatus.CONFLICT, "QUIZ_SESSION_STATE_CONFLICT", "퀴즈 진행 상태가 올바르지 않거나 이미 종료된 세션입니다.");
+    QUIZ_SESSION_STATE_CONFLICT(HttpStatus.CONFLICT, "QUIZ_SESSION_STATE_CONFLICT", "퀴즈 진행 상태가 올바르지 않거나 이미 종료된 세션입니다."),
+    MISSING_FEEDBACK_TEXT(HttpStatus.BAD_REQUEST, "MISSING_FEEDBACK_TEXT", "실패 사유가 누락되었습니다.");
 
     private final HttpStatus status;
     private final String code;

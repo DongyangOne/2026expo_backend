@@ -2,10 +2,12 @@ package one._026expo_backend.feedback.service;
 
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.feedback.domain.Feedback;
+import one._026expo_backend.feedback.dto.request.AiFeedbackRequestDto;
 import one._026expo_backend.feedback.dto.response.FeedbackListResponseDto;
 import one._026expo_backend.feedback.repository.FeedbackRepository;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecyclingLogInfo;
 
+import one._026expo_backend.global.enums.UseYnEnum;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import one._026expo_backend.global.enums.ErrorCode;
@@ -19,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -60,5 +63,34 @@ public class FeedbackService {
         Page<FeedbackListResponseDto> dtoPage = feedbackPage.map(FeedbackListResponseDto::from);
 
         return PageResponseDto.from(dtoPage);
+    }
+
+    /**
+     * AI 웹훅 데이터를 받아 Feedback 테이블에 즉시 저장
+     */
+    @Transactional
+    public void saveAiFeedback(AiFeedbackRequestDto dto) {
+        //실패인데 실패 사유 누락 시 에외처리
+        if (dto.getIsFailed() == UseYnEnum.Y && !StringUtils.hasText(dto.getFeedbackText())) {
+            throw new BusinessException(ErrorCode.MISSING_FEEDBACK_TEXT);
+        }
+
+        //성공 시 실패 사유 null 처리
+        String validFeedbackText = (dto.getIsFailed() == UseYnEnum.N) ? null : dto.getFeedbackText();
+
+        // 유저 검증
+        Users user = userRepository.findById(dto.getUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // 피드백 엔티티 생성
+        Feedback feedback = Feedback.builder()
+                .user(user)
+                .wasteType(dto.getWasteType())
+                .isFailed(dto.getIsFailed())
+                .feedbackText(validFeedbackText)
+                .build();
+
+        // 저장
+        feedbackRepository.save(feedback);
     }
 }
