@@ -17,8 +17,12 @@ public class FeedbackDetail {
     private Long feedbackDetailId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waste_type", nullable = false, columnDefinition = "ENUM('CAN', 'PET', 'PAPER','TRASH')")
+    @Column(name = "waste_type", nullable = false,
+            columnDefinition = "ENUM('PLASTIC','CAN','PAPER','VINYL','GLASS','BATTERY','FLUORESCENT','STYROFOAM')")
     private WasteType wasteType;
+
+    @Column(name = "guidance_code", nullable = false, length = 50)
+    private String guidanceCode;
 
     @Column(name = "feedback_content", nullable = false, columnDefinition = "TEXT")
     private String feedbackContent;
