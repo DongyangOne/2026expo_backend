@@ -45,15 +45,11 @@ public class FeedbackDetailController {
     @Operation(summary = "피드백 상세 조회", description = "특정 피드백의 상세 정보와 분리수거 가이드 영상/내용을 조회합니다.")
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.FEEDBACK_NOT_FOUND, ErrorCode.ACCESS_DENIED})
     @GetMapping("/{feedbackId}")
-    public ResponseEntity<ApiResponse<FeedbackDetailResponseDto>> getFeedbackDetail(
-            @AuthenticationPrincipal Long userId,
-            @Valid @ModelAttribute FeedbackDetailRequestDto requestDto
-    ) {
-        FeedbackDetailResponseDto response = feedbackDetailService.getFeedbackDetail(userId, requestDto.getFeedbackId());
-      
-      return ResponseEntity.ok(ApiResponse.ok(response));
+    public ResponseEntity<ApiResponse<FeedbackDetailResponseDto>>
+    getFeedbackDetail(@AuthenticationPrincipal Long userId, @PathVariable Long feedbackId) {
+        FeedbackDetailResponseDto response = feedbackDetailService.getFeedbackDetail(userId, feedbackId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
-
 
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.MISSING_FEEDBACK_TEXT})
     @Operation(summary = "AI 쓰레기 분류 결과 수신",

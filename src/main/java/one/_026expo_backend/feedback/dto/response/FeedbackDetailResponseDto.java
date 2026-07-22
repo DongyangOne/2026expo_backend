@@ -41,22 +41,28 @@ public class FeedbackDetailResponseDto {
     public static FeedbackDetailResponseDto of(Feedback feedback, FeedbackDetail detail) {
         boolean isSuccess = feedback.getIsFailed() == UseYnEnum.N;
         String wasteName = feedback.getWasteType().getDescription();
+        String suffix = wasteName.equals("종이") || wasteName.equals("비닐") ? "를" : "을";
 
-        String suffix = (wasteName.equals("종이") || wasteName.equals("일반 쓰레기")) ? "를" : "을";
+        String generatedTitle = isSuccess ? wasteName + suffix + " 올바르게 분리수거하셨어요." : wasteName + suffix + " 올바르게 버리지 못했어요.";
 
-        String generatedTitle = isSuccess ?
-                wasteName + suffix + " 올바르게 분리수거하셨어요." :
-                wasteName + suffix + " 올바르게 버리지 못했어요.";
+        /*
+         * 영상 가이드가 있으면 FeedbackDetail의 정보를 사용하고,
+         * 없으면 AI가 저장한 피드백 문구를 사용
+         */
+        String videoUrl = detail == null ? null : detail.getFeedbackVideoAddr();
+        String content = detail == null ? feedback.getFeedbackText() : detail.getFeedbackContent();
 
         return FeedbackDetailResponseDto.builder()
                 .feedbackId(feedback.getFeedbackId())
-                .date(feedback.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")))
-                .time(feedback.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm")))
+                .date(feedback.getCreatedAt()
+                        .format(DateTimeFormatter.ofPattern("yyyy.MM.dd")))
+                .time(feedback.getCreatedAt()
+                        .format(DateTimeFormatter.ofPattern("HH:mm")))
                 .isSuccess(isSuccess)
                 .wasteType(wasteName)
                 .title(generatedTitle)
-                .videoUrl(detail.getFeedbackVideoAddr())
-                .content(detail.getFeedbackContent())
+                .videoUrl(videoUrl)
+                .content(content)
                 .build();
     }
 }

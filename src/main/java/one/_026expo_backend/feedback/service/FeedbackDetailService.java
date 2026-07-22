@@ -32,8 +32,7 @@ public class FeedbackDetailService {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
 
-        FeedbackDetail detail = feedbackDetailRepository.findByWasteType(feedback.getWasteType())
-                .orElseThrow(() -> new BusinessException(ErrorCode.FEEDBACK_DETAIL_NOT_FOUND));
+        FeedbackDetail detail = feedbackDetailRepository.findByWasteTypeAndGuidanceCode(feedback.getWasteType(), feedback.getGuidanceCode()).orElse(null);
 
         return FeedbackDetailResponseDto.of(feedback, detail);
     }
