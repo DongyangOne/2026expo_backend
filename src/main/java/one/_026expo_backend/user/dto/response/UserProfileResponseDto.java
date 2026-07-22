@@ -18,7 +18,7 @@ public class UserProfileResponseDto {
     @Schema(description = "사용자 식별자", example = "1")
     private Long userId;
 
-    @Schema(description = "프로필 이미지 URL", example = "https://cdn.example.com/profile.png", nullable = true)
+    @Schema(description = "프로필 이미지 Presigned URL", example = "https://minio.oneexpo.kro.kr/expo/B01FA528-4A70-483C-BCC5-37964F73C6CD.jpeg?X-Amz-Algorithm=AWS4-HMAC-SHA256", nullable = true)
     private String profileImageUrl;
 
     @Schema(description = "이름", example = "김민혁")
@@ -42,6 +42,16 @@ public class UserProfileResponseDto {
         return UserProfileResponseDto.builder()
                 .userId(user.getId())
                 .profileImageUrl(null)
+                .name(user.getUsername())
+                .loginId(user.getLoginId())
+                .email(user.getEmail())
+                .build();
+    }
+
+    public static UserProfileResponseDto from(Users user, String profileImageUrl) {
+        return UserProfileResponseDto.builder()
+                .userId(user.getId())
+                .profileImageUrl(profileImageUrl)
                 .name(user.getUsername())
                 .loginId(user.getLoginId())
                 .email(user.getEmail())

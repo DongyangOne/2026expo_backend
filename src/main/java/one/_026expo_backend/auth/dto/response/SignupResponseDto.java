@@ -1,10 +1,12 @@
-package one._026expo_backend.auth.dto;
+package one._026expo_backend.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import one._026expo_backend.user.domain.Users;
 
 import java.time.LocalDateTime;
 
@@ -23,7 +25,19 @@ public class SignupResponseDto {
 	@Schema(description = "이메일", example = "user@example.com")
 	private String email;
 
+    @Schema(description = "소속", example = "One")
+    private String team;
+
 	@Schema(description = "생성일시", example = "2026-05-28T08:12:00")
 	private LocalDateTime createdDate;
 
+	public static SignupResponseDto from(Users user) {
+		return SignupResponseDto.builder()
+				.username(user.getUsername())
+				.loginId(user.getLoginId())
+				.email(user.getEmail())
+                .team(user.getTeam())
+				.createdDate(user.getCreatedAt())
+				.build();
+	}
 }

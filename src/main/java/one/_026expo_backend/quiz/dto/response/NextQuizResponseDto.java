@@ -12,15 +12,15 @@ import one._026expo_backend.quiz.domain.Quiz;
 @Builder
 @AllArgsConstructor
 public class NextQuizResponseDto {
-    @Schema(description = "현재 퀴즈 정답 설명", example = "페트병과 뚜껑은 따로 버려야 해요!" )
+    @Schema(description = "현재 퀴즈 정답 설명", example = "페트병 내부에 이물질이 들어가는 것을 막고 압축 상태를 유지하기 위해 뚜껑을 닫아 배출하는 것이 올바른 방법입니다." )
     private String explan;
-    @Schema(description = "현재 퀴즈 정답 여부", example = "true")
+    @Schema(description = "현재 퀴즈 정답 여부", example = "false")
     private Boolean isCorrect;
     @Schema(description = "퀴즈 종료 여부", example = "false")
     private Boolean finished;
     @Schema(description = "다음 퀴즈 id", example = "6")
     private Long nextQuizId;
-    @Schema(description = "다음 퀴즈 내용", example = "깨진 유리컵이나 접시는 신문지에 싸서 유리류 수거함에 분리배출해야 한다.")
+    @Schema(description = "다음 퀴즈 내용", example = "양파 껍질, 파 뿌리, 마늘 껍질은 음식물 쓰레기가 아닌 일반 쓰레기이다.")
     private String nextQuestion;
 
     public static NextQuizResponseDto of(

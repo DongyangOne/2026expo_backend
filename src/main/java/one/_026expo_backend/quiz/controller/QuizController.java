@@ -1,6 +1,7 @@
 package one._026expo_backend.quiz.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,14 +11,12 @@ import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.quiz.dto.request.NextQuizRequestDto;
 import one._026expo_backend.quiz.dto.response.NextQuizResponseDto;
 import one._026expo_backend.quiz.dto.request.StartQuizRequestDto;
+import one._026expo_backend.quiz.dto.response.QuizResultResponseDto;
 import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
 import one._026expo_backend.quiz.service.QuizService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
 
 @RestController
@@ -30,14 +29,14 @@ public class QuizController {
     /**
      * 퀴즈 시작 API
      *
-     * api 요청 예시 : POST /api/v1/quiz/start
+     * api 요청 예시 : POST /api/v1/quiz/sessions
      * 요청 데이터 : 퀴즈 개수(quantity)
      * 응답 데이터 : 퀴즈 리스트를 저장하는 redis session id, 첫번째 퀴즈 정보(id, 문제)
      */
     @ApiErrorExceptions({ErrorCode.QUIZ_NOT_FOUND, ErrorCode.NOT_ENOUGH_QUIZ, ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_SESSION_SAVE_FAILED})
     @Operation(summary = "퀴즈 시작", description = "유저가 선택한 퀴즈 개수를 이용하여 퀴즈 id리스트와 첫번째 문제 정보를 불러옵니다.")
-    @PostMapping("/start")
-    public ResponseEntity<ApiResponse<StartQuizResponseDto>> StartQuiz(
+    @PostMapping("/sessions")
+    public ResponseEntity<ApiResponse<StartQuizResponseDto>> startQuiz(
             @AuthenticationPrincipal Long userId,
             @RequestBody @Valid StartQuizRequestDto requestDto
     ){
@@ -47,20 +46,48 @@ public class QuizController {
     /**
      * 정답 제출 및 다음 퀴즈 조회 API
      *
-     * api 요청 예시 : POST /api/v1/quiz/next
-     * 요청 데이터 : NextQuizRequestDto
+     * api 요청 예시 : POST /api/v1/quiz/sessions/{sessionId}/answers
+     * 요청 데이터 : sessionId, NextQuizRequestDto
      * 응답 데이터 : NextQuizResponseDto
      */
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FOUND, ErrorCode.INVALID_QUIZ_ANSWER, ErrorCode.ALREADY_SOLVED_QUIZ,
                     ErrorCode.QUIZ_SESSION_NOT_FOUND, ErrorCode.INVALID_QUIZ_SEQUENCE, ErrorCode.INVALID_QUIZ_SESSION,
-                    ErrorCode.QUIZ_SESSION_READ_FAILED, ErrorCode.QUIZ_SESSION_UPDATE_FAILED, ErrorCode.QUIZ_SESSION_COMPLETE_FAILED})
+                    ErrorCode.QUIZ_SESSION_READ_FAILED, ErrorCode.QUIZ_SESSION_UPDATE_FAILED, ErrorCode.QUIZ_SESSION_COMPLETE_FAILED,
+                    ErrorCode.INVALID_QUIZ_ID, ErrorCode.MISSING_QUIZ_ANSWER, ErrorCode.MISSING_SESSION_ID, ErrorCode.INVALID_SESSION_FORMAT,
+                    ErrorCode.QUIZ_SESSION_STATE_CONFLICT})
     @Operation(summary = "정답 제출 및 다음 퀴즈 조회", description = "요청 정보를 이용하여 현재 문제를 채점 및 기록하고 다음 퀴즈 정보를 가져옵니다.")
-    @PostMapping("/next")
-    public ResponseEntity<ApiResponse<NextQuizResponseDto>> StartQuiz(
+    @PostMapping("/sessions/{sessionId}/answers")
+    public ResponseEntity<ApiResponse<NextQuizResponseDto>> submitAnswerAndNextQuiz(
             @AuthenticationPrincipal Long userId,
-            @RequestBody @Valid NextQuizRequestDto requestDto
+            @PathVariable String sessionId,
+            @RequestBody NextQuizRequestDto requestDto
     ){
-        NextQuizResponseDto responseDto = quizService.moveOnQuiz(userId, requestDto);
+        NextQuizResponseDto responseDto = quizService.moveOnQuiz(userId, sessionId, requestDto);
+        return ResponseEntity.ok(ApiResponse.ok(responseDto));
+    }
+
+    /**
+     * 퀴즈 종료 및 결과정산 API
+     *
+     * api 요청 예시 : POST /api/v1/quiz/sessions/{sessionId}/result
+     * 요청 데이터 : QuizResultRequestDto
+     * 응답 데이터 : QuizResponseResponseDto
+     */
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FINISHED, ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED, ErrorCode.USER_CHARACTER_NOT_FOUND,
+                        ErrorCode.INVALID_QUIZ_SESSION, ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID})
+    @Operation(summary = "퀴즈 종료 및 결과 정산", description = "완료된 퀴즈 세션의 결과를 집계하고 캐릭터 경험치를 증가시킵니다.")
+    @PostMapping("/sessions/{sessionId}/result")
+    public ResponseEntity<ApiResponse<QuizResultResponseDto>> resultQuiz
+    (
+            @AuthenticationPrincipal Long userId,
+            @Parameter(
+                    name = "sessionId",
+                    description = "정산할 퀴즈의 세션 ID",
+                    example = "550e8400-e29b-41d4-a716-446655440000"
+            )
+            @PathVariable("sessionId") String sessionId
+    ) {
+        QuizResultResponseDto responseDto = quizService.resultQuiz(userId, sessionId);
         return ResponseEntity.ok(ApiResponse.ok(responseDto));
     }
 

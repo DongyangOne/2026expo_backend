@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -29,6 +30,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final SecurityExceptionHandler securityExceptionHandler;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -53,8 +55,8 @@ public class SecurityConfig {
 
                 // 인증되지 않은 요청은 401 응답을 반환
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                    .authenticationEntryPoint(securityExceptionHandler)
+                    .accessDeniedHandler(securityExceptionHandler)
                 )
 
                 // swagger 및 인증 API는 공개하고 나머지 요청은 인증 필수
@@ -64,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/quiz/**").authenticated()
                         .requestMatchers("/api/v1/feedback/**").authenticated()
                         .requestMatchers("/api/v1/admin/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/feedbackDetail/result").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 모든 요청 전에 JWT필터로 토큰 검증 수행
