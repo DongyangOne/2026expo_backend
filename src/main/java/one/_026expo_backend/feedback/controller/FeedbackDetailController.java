@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.feedback.dto.request.FeedbackDetailRequestDto;
+import one._026expo_backend.feedback.dto.response.AdminFeedbackResponseDto;
 import one._026expo_backend.feedback.dto.response.FeedbackDetailResponseDto;
 import one._026expo_backend.feedback.service.FeedbackDetailService;
 import one._026expo_backend.feedback.dto.request.AiFeedbackRequestDto;
@@ -15,7 +16,10 @@ import one._026expo_backend.feedback.service.FeedbackService;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
+import one._026expo_backend.global.pagination.PageRequestDto;
+import one._026expo_backend.global.pagination.PageResponseDto;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -48,6 +52,15 @@ public class FeedbackDetailController {
     public ResponseEntity<ApiResponse<FeedbackDetailResponseDto>>
     getFeedbackDetail(@AuthenticationPrincipal Long userId, @PathVariable Long feedbackId) {
         FeedbackDetailResponseDto response = feedbackDetailService.getFeedbackDetail(userId, feedbackId);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    @Operation(summary = "관리자 피드백 조회", description = "로그인한 관리자와 소속이 같은 사용자의 피드백을 최신순으로 조회합니다.")
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponseDto<AdminFeedbackResponseDto>>>
+    getFeedbacks(@AuthenticationPrincipal Long adminId, @Valid @ModelAttribute PageRequestDto pageRequestDto) {
+        PageResponseDto<AdminFeedbackResponseDto> response = feedbackDetailService.getFeedbacks(adminId, pageRequestDto);
+
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
