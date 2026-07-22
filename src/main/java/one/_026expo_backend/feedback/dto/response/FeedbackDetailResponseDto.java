@@ -40,10 +40,9 @@ public class FeedbackDetailResponseDto {
 
     public static FeedbackDetailResponseDto of(Feedback feedback, FeedbackDetail detail) {
         boolean isSuccess = feedback.getIsFailed() == UseYnEnum.N;
-        String wasteName = feedback.getWasteType().getDescription();
-        String suffix = wasteName.equals("종이") || wasteName.equals("비닐") ? "를" : "을";
 
-        String generatedTitle = isSuccess ? wasteName + suffix + " 올바르게 분리수거하셨어요." : wasteName + suffix + " 올바르게 버리지 못했어요.";
+        // enum메서드 호출
+        String generatedTitle = feedback.getWasteType().generateTitle(isSuccess);
 
         /*
          * 영상 가이드가 있으면 FeedbackDetail의 정보를 사용하고,
@@ -52,6 +51,7 @@ public class FeedbackDetailResponseDto {
         String videoUrl = detail == null ? null : detail.getFeedbackVideoAddr();
         String content = detail == null ? feedback.getFeedbackText() : detail.getFeedbackContent();
 
+
         return FeedbackDetailResponseDto.builder()
                 .feedbackId(feedback.getFeedbackId())
                 .date(feedback.getCreatedAt()
@@ -59,7 +59,7 @@ public class FeedbackDetailResponseDto {
                 .time(feedback.getCreatedAt()
                         .format(DateTimeFormatter.ofPattern("HH:mm")))
                 .isSuccess(isSuccess)
-                .wasteType(wasteName)
+                .wasteType(feedback.getWasteType().getDescription())
                 .title(generatedTitle)
                 .videoUrl(videoUrl)
                 .content(content)
