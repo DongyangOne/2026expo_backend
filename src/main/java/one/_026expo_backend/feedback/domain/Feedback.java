@@ -26,8 +26,12 @@ public class Feedback {
     private Users user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waste_type", nullable = false, columnDefinition = "ENUM('CAN', 'PET', 'PAPER','TRASH')")
+    @Column(name = "waste_type", nullable = false,
+            columnDefinition = "ENUM('PLASTIC','CAN','PAPER','VINYL','GLASS','BATTERY','FLUORESCENT','STYROFOAM')")
     private WasteType wasteType;
+
+    @Column(name = "guidance_code", length = 50)
+    private String guidanceCode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "is_failed", nullable = false, columnDefinition = "ENUM('Y','N')")
@@ -41,11 +45,12 @@ public class Feedback {
     private LocalDateTime createdAt;
 
     @Builder
-    public Feedback(Users user, WasteType wasteType, UseYnEnum isFailed, String feedbackText) {
+    public Feedback(Users user, WasteType wasteType, UseYnEnum isFailed, String feedbackText, String guidanceCode) {
         this.user = user;
         this.wasteType = wasteType;
         this.isFailed = isFailed;
         this.feedbackText = feedbackText;
+        this.guidanceCode = guidanceCode;
         this.createdAt = LocalDateTime.now();
     }
 }

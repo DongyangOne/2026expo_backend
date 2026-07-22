@@ -10,5 +10,5 @@ import java.util.Optional;
 @Repository
 public interface FeedbackDetailRepository extends JpaRepository<FeedbackDetail,Long> {
     // 쓰레기 종류(CAN, PET 등)로 사전 데이터 조회
-    Optional<FeedbackDetail> findByWasteType(WasteType wasteType);
+    Optional<FeedbackDetail> findByWasteTypeAndGuidanceCode(WasteType wasteType, String guidanceCode);
 }
