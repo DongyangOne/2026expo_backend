@@ -31,16 +31,16 @@ public class QuizResultResponseDto {
     @Schema(description = "유저 캐릭터 id", example = "1")
     private Long userCharacterId;
 
-    @Schema(description = "경험치 반영 전 레벨", example = "5")
+    @Schema(description = "경험치 반영 전 레벨", example = "1")
     private Integer beforeLevel;
 
-    @Schema(description = "경험치 반영 전 경험치", example = "42")
+    @Schema(description = "경험치 반영 전 경험치", example = "30")
     private Integer beforeExp;
 
-    @Schema(description = "경험치 반영 후 현재 레벨", example = "5")
+    @Schema(description = "경험치 반영 후 현재 레벨", example = "1")
     private Integer currentLevel;
 
-    @Schema(description = "경험치 반영 후 현재 경험치", example = "50")
+    @Schema(description = "경험치 반영 후 현재 경험치", example = "38")
     private Integer currentExp;
 
     @Schema(description = "레벨업 여부", example = "false")
@@ -49,10 +49,10 @@ public class QuizResultResponseDto {
     @Schema(description = "다음 레벨까지 필요한 최대 경험치", example = "100")
     private Integer maxExp;
 
-    @Schema(description = "현재 레벨 기준 경험치 퍼센트", example = "50")
+    @Schema(description = "현재 레벨 기준 경험치 퍼센트", example = "38")
     private Integer expPercent;
 
-    @Schema(description = "다음 레벨까지 남은 경험치", example = "50")
+    @Schema(description = "다음 레벨까지 남은 경험치", example = "62")
     private Integer remainingExp;
 
     public static QuizResultResponseDto of(

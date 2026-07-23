@@ -2,6 +2,7 @@ package one._026expo_backend.feedback.domain;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import one._026expo_backend.feedback.enums.WasteType;
@@ -25,16 +26,31 @@ public class Feedback {
     private Users user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "waste_type", nullable = false, columnDefinition = "ENUM('CAN', 'PET', 'PAPER','TRASH')")
+    @Column(name = "waste_type", nullable = false,
+            columnDefinition = "ENUM('PLASTIC','CAN','PAPER','VINYL','GLASS','BATTERY','FLUORESCENT','STYROFOAM')")
     private WasteType wasteType;
+
+    @Column(name = "guidance_code", length = 50)
+    private String guidanceCode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "is_failed", nullable = false, columnDefinition = "ENUM('Y','N')")
     private UseYnEnum isFailed = UseYnEnum.N;
 
+    // AI가 판별한 실패 사유 (예: "캔에 음식물이 들어있었다")
     @Column(name = "feedback_text", columnDefinition = "TEXT")
     private String feedbackText;
 
-    @Column(name = "createdAt", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Builder
+    public Feedback(Users user, WasteType wasteType, UseYnEnum isFailed, String feedbackText, String guidanceCode) {
+        this.user = user;
+        this.wasteType = wasteType;
+        this.isFailed = isFailed;
+        this.feedbackText = feedbackText;
+        this.guidanceCode = guidanceCode;
+        this.createdAt = LocalDateTime.now();
+    }
 }

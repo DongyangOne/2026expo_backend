@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -63,7 +64,9 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/quiz/**").authenticated()
+                        .requestMatchers("/api/v1/feedback/**").authenticated()
                         .requestMatchers("/api/v1/admin/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/feedbackDetail/result").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 모든 요청 전에 JWT필터로 토큰 검증 수행
