@@ -113,21 +113,23 @@ public class FeedbackDetailService {
         String key = wasteType.name() + ":" + guidanceCode.trim().toUpperCase();
 
         return switch (key) {
-            case "CAN:DENT" -> "feedback_can_dent.mp4";
+            // 캔 내용물/무게 이상
+            case "CAN:EMPTY_CONTENTS" -> "feedback_can_waterOff.mp4";
 
-            case "CAN:WATER_OFF" -> "feedback_can_waterOff.mp4";
+            // 캔 미압착
+            case "CAN:COMPRESS" -> "feedback_can_dent.mp4";
 
-            case "PAPER:WEIGHT" -> "feedback_paper_weight.mp4";
+            // 종이 무게 이상
+            case "PAPER:EMPTY_CONTENTS" -> "feedback_paper_weight.mp4";
 
-            case "PLASTIC:DENT" -> "feedback_plastic_dent.mp4";
+            // 플라스틱·페트 내용물/무게 이상
+            case "PLASTIC:EMPTY_CONTENTS" -> "feedback_plastic_waterOff.mp4";
 
-            case "PLASTIC:FOREIGN" -> "feedback_plastic_foreign.mp4";
+            // 플라스틱·페트 라벨 미제거
+            case "PLASTIC:REMOVE_LABEL" -> "feedback_plastic_vinylOff.mp4";
 
-            case "PLASTIC:VINYL_OFF" -> "feedback_plastic_vinylOff.mp4";
-
-            case "PLASTIC:WATER_OFF" -> "feedback_plastic_waterOff.mp4";
-
-            case "VINYL:WEIGHT" -> "feedback_vinyl_weight.mp4";
+            // 페트 미압착
+            case "PLASTIC:COMPRESS" -> "feedback_plastic_dent.mp4";
 
             default -> null;
         };
