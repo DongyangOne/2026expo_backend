@@ -79,7 +79,7 @@ public class FeedbackDetailService {
     /**
      * 쓰레기 종류와 안내 코드에 맞는 영상 Presigned URL 생성
      */
-    private String createFeedbackVideoUrl(WasteType wasteType, String guidanceCode) {
+    public String createFeedbackVideoUrl(WasteType wasteType, String guidanceCode) {
         if (wasteType == null || !StringUtils.hasText(guidanceCode)) {
             return null;
         }
@@ -87,7 +87,11 @@ public class FeedbackDetailService {
         String fileName = resolveVideoFileName(wasteType, guidanceCode);
 
         if (!StringUtils.hasText(fileName)) {
-            return null;
+            return feedbackDetailRepository
+                    .findByWasteTypeAndGuidanceCode(wasteType, guidanceCode)
+                    .map(FeedbackDetail::getFeedbackVideoAddr)
+                    .filter(StringUtils::hasText)
+                    .orElse(null);
         }
 
         String objectName = feedbackFolder + "/" + fileName;
