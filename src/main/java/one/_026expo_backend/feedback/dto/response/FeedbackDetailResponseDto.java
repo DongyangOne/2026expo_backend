@@ -32,25 +32,24 @@ public class FeedbackDetailResponseDto {
     @Schema(description = "피드백 제목", example = "캔을 올바르게 버리지 못했어요.")
     private String title;
 
-    @Schema(description = "분리수거 가이드 영상 URL", example = "https://s3.ap-northeast-2.amazonaws.com/...")
+    @Schema(description = "분리수거 가이드 영상 URL", example = "https://minio.oneexpo.kro.kr/expo/feedback-video/feedback_can_dent.mp4")
     private String videoUrl;
 
     @Schema(description = "분리수거 가이드 내용", example = "1. 안에 내용물이 없어야 합니다.\n2. 물로 헹군 후 배출해야 합니다.")
     private String content;
 
     public static FeedbackDetailResponseDto of(Feedback feedback, FeedbackDetail detail) {
+        String videoUrl = detail == null ? null : detail.getFeedbackVideoAddr();
+
+        return of(feedback, detail, videoUrl);
+    }
+
+    public static FeedbackDetailResponseDto of(Feedback feedback, FeedbackDetail detail, String feedbackVideoUrl) {
         boolean isSuccess = feedback.getIsFailed() == UseYnEnum.N;
 
-        // enum메서드 호출
         String generatedTitle = feedback.getWasteType().generateTitle(isSuccess);
 
-        /*
-         * 영상 가이드가 있으면 FeedbackDetail의 정보를 사용하고,
-         * 없으면 AI가 저장한 피드백 문구를 사용
-         */
-        String videoUrl = detail == null ? null : detail.getFeedbackVideoAddr();
         String content = detail == null ? feedback.getFeedbackText() : detail.getFeedbackContent();
-
 
         return FeedbackDetailResponseDto.builder()
                 .feedbackId(feedback.getFeedbackId())
@@ -61,7 +60,7 @@ public class FeedbackDetailResponseDto {
                 .isSuccess(isSuccess)
                 .wasteType(feedback.getWasteType().getDescription())
                 .title(generatedTitle)
-                .videoUrl(videoUrl)
+                .videoUrl(feedbackVideoUrl)
                 .content(content)
                 .build();
     }
