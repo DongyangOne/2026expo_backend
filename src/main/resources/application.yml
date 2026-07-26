@@ -70,5 +70,6 @@ minio:
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
   bucket-name: expo
+  feedback-folder: feedback-video
   url-expiry-hours: 2
   profile-image-object: ${MINIO_PROFILE_IMAGE_OBJECT:B01FA528-4A70-483C-BCC5-37964F73C6CD.jpeg}
