@@ -69,7 +69,7 @@ public class UserController {
 
     @Operation(
             summary = "마이페이지 사용자 인증 이메일 코드 검증",
-            description = "로그인한 사용자가 이메일로 받은 인증 코드를 입력하면 마이페이지 사용자 인증 목적의 이메일 코드를 검증합니다."
+            description = "로그인한 사용자의 계정 이메일과 이메일로 받은 인증 코드를 함께 입력하면 마이페이지 사용자 인증 목적의 이메일 코드를 검증합니다."
     )
     @ApiErrorExceptions({
             ErrorCode.UNAUTHORIZED,

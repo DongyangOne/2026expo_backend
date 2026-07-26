@@ -96,9 +96,14 @@ public class UserService {
         Users user = userRepository.findByIdAndIsDeletedAndDeletedAtIsNull(userId, UseYnEnum.N)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
+        String requestedEmail = requestDto.getEmail().trim();
+        if (!requestedEmail.equals(user.getEmail())) {
+            throw new BusinessException(ErrorCode.AUTH_CODE_MISMATCH);
+        }
+
         emailService.verifyCode(
                 user.getId(),
-                user.getEmail(),
+                requestedEmail,
                 requestDto.getVerificationCode(),
                 EmailVerificationPurpose.MYPAGE_USER_VERIFICATION
         );
