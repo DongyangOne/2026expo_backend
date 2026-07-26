@@ -73,8 +73,3 @@ minio:
   feedback-folder: feedback-video
   url-expiry-hours: 2
   profile-image-object: ${MINIO_PROFILE_IMAGE_OBJECT:B01FA528-4A70-483C-BCC5-37964F73C6CD.jpeg}
-
-ai:
-  server:
-    base-url: ${AI_SERVER_BASE_URL:https://ai.oneexpo.kro.kr}
-    api-key: ${AI_SERVER_API_KEY:}

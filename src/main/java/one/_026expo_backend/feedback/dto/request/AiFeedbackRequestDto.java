@@ -54,6 +54,10 @@ public class AiFeedbackRequestDto {
     @Schema(description = "AI가 감지한 객체 영역 [x1, y1, x2, y2]", example = "[104.0, 149.3, 235.2, 280.3]")
     private List<Double> bbox;
 
+    @Schema(description = "AI 또는 하드웨어가 전달한 이미지 URL", example = "https://minio.oneexpo.kro.kr/expo/waste-image.png", nullable = true)
+    @JsonProperty("image_url")
+    private String imageUrl;
+
     @Getter
     @NoArgsConstructor
     @Schema(description = "AI 쓰레기 분류 결과")
