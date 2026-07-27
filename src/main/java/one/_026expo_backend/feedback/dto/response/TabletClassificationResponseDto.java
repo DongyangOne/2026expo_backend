@@ -25,7 +25,6 @@ public class TabletClassificationResponseDto {
     private String guideVideoUrl;
     private Integer level;
     private Integer earnedExp;
-    private String imageUrl;
 
     public static TabletClassificationResponseDto waiting(String clientId) {
         return TabletClassificationResponseDto.builder()
@@ -55,7 +54,6 @@ public class TabletClassificationResponseDto {
                 .guideVideoUrl(detection.getGuideVideoUrl())
                 .level(detection.getLevel())
                 .earnedExp(detection.getEarnedExp())
-                .imageUrl(detection.getImageUrl())
                 .build();
     }
 }
