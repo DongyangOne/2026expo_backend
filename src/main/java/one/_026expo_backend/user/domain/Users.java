@@ -88,6 +88,10 @@ public class Users extends BaseEntity {
         this.email = newEmail;
     }
 
+    public void changeLoginId(String newLoginId) {
+        this.loginId = newLoginId;
+    }
+
     public void clearRefreshToken() {
         this.refreshToken = null;
         this.refreshExpiredAt = null;

@@ -133,7 +133,7 @@ public class UserService {
         emailService.validateVerificationConfirmed(userId, EmailVerificationPurpose.MYPAGE_USER_VERIFICATION);
         validateProfileUpdateRequest(requestDto);
 
-        updateEmailIfPresent(user, requestDto.getEmail());
+        updateLoginIdIfPresent(user, requestDto.getLoginId());
         updatePasswordIfPresent(user, requestDto.getPassword(), requestDto.getPasswordConfirm());
 
         return UserProfileUpdateResponseDto.from(user, getMinioImageUrl(profileImageObject));
@@ -240,14 +240,14 @@ public class UserService {
     }
 
     private void validateProfileUpdateRequest(UserProfileUpdateRequestDto requestDto) {
-        boolean hasEmail = StringUtils.hasText(requestDto.getEmail());
+        boolean hasLoginId = StringUtils.hasText(requestDto.getLoginId());
         boolean hasPassword = StringUtils.hasText(requestDto.getPassword());
 
-        if (!hasEmail && !hasPassword) {
+        if (!hasLoginId && !hasPassword) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
-        if (requestDto.getEmail() != null && !hasEmail) {
+        if (requestDto.getLoginId() != null && !hasLoginId) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
@@ -256,21 +256,21 @@ public class UserService {
         }
     }
 
-    private void updateEmailIfPresent(Users user, String email) {
-        if (!StringUtils.hasText(email)) {
+    private void updateLoginIdIfPresent(Users user, String loginId) {
+        if (!StringUtils.hasText(loginId)) {
             return;
         }
 
-        String normalizedEmail = email.trim();
-        if (normalizedEmail.equals(user.getEmail())) {
+        String normalizedLoginId = loginId.trim();
+        if (normalizedLoginId.equals(user.getLoginId())) {
             return;
         }
 
-        if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+        if (userRepository.existsByLoginId(normalizedLoginId)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_USER);
         }
 
-        user.changeEmail(normalizedEmail);
+        user.changeLoginId(normalizedLoginId);
     }
 
     private void updatePasswordIfPresent(Users user, String password, String passwordConfirm) {

@@ -92,18 +92,18 @@ public class UserController {
     /**
      * 로그인한 사용자의 마이페이지 프로필 정보를 수정한다.
      *
-     * 수정 가능한 값은 이메일과 비밀번호만 허용해, 계정 식별값이나 화면 미지원 필드는 임의 변경되지 않도록 한다.
+     * 수정 가능한 값은 아이디와 비밀번호만 허용해, 화면 미지원 필드는 임의 변경되지 않도록 한다.
      *
      * @param userId 인증된 사용자 식별자
      * @param requestDto 프로필 수정 요청 정보
      * @return 수정된 마이페이지 프로필 응답
      */
-    @Operation(summary = "마이페이지 프로필 수정", description = "로그인한 사용자의 마이페이지 프로필 정보 중 이메일과 비밀번호를 수정합니다.")
+    @Operation(summary = "마이페이지 프로필 수정", description = "로그인한 사용자의 마이페이지 프로필 정보 중 아이디와 비밀번호를 수정합니다.")
     @ApiErrorExceptions({
             ErrorCode.UNAUTHORIZED,
             ErrorCode.USER_NOT_FOUND,
             ErrorCode.EMAIL_NOT_VERIFIED,
-            ErrorCode.DUPLICATE_EMAIL,
+            ErrorCode.DUPLICATE_USER,
             ErrorCode.INVALID_INPUT,
             ErrorCode.PASSWORD_MISMATCH
     })
