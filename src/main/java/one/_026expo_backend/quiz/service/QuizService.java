@@ -38,6 +38,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class QuizService {
+    private static final int QUIZ_CORRECT_EXP = 2;
+    private static final int QUIZ_MAX_EXP = 20;
     private static final Pattern UUID_PATTERN =
             Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
@@ -137,7 +139,7 @@ public class QuizService {
         //퀴즈 채점
         boolean isCorrect = nowQuiz.getAnswer().equals(requestDto.getAnswer());
 
-        Integer earnedPoint = isCorrect ? nowQuiz.getRewardPoint() : 0;
+        Integer earnedPoint = isCorrect ? QUIZ_CORRECT_EXP : 0;
 
         QuizRecord quizRecord = QuizRecord.builder()
                 .users(user)
@@ -245,10 +247,11 @@ public class QuizService {
         );
 
         // DB에 저장된 이번 퀴즈 세션의 모든 earnedPoint를 합산해서 획득 경험치로 사용
-        int earnedExp = quizRecordRepository.sumEarnedPointByUsersAndSessionId(
+        int totalEarnedExp = quizRecordRepository.sumEarnedPointByUsersAndSessionId(
                 user,
                 sessionId
         );
+        int earnedExp = Math.min(totalEarnedExp, QUIZ_MAX_EXP);
 
         // 유저 캐릭터 정보 가져오기
         UserCharacter userCharacter = userCharacterRepository.findFirstByUser(user)

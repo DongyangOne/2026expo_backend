@@ -36,7 +36,7 @@ import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.Re
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class FeedbackService {
-    private static final int AI_CLASSIFICATION_SUCCESS_EXP = 10;
+    private static final int AI_CLASSIFICATION_SUCCESS_EXP = 50;
 
     private final FeedbackRepository feedbackRepository;
     private final UserRepository userRepository;

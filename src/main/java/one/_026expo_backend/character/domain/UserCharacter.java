@@ -44,7 +44,7 @@ public class UserCharacter {
         return UserCharacter.builder()
                 .user(user)
                 .character(character)
-                .currentLevel(1)
+                .currentLevel(0)
                 .currentExp(0)
                 .updatedAt(LocalDateTime.now())
                 .build();
