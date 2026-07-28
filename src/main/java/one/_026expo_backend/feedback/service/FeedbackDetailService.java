@@ -217,7 +217,7 @@ public class FeedbackDetailService {
             case "PLASTIC:EMPTY_CONTENTS" -> "feedback_plastic_waterOff.mp4";
 
             // 플라스틱·페트 라벨 미제거
-            case "PLASTIC:REMOVE_LABEL" -> "feedback_plastic-vinylOff.mp4";
+            case "PLASTIC:REMOVE_LABEL" -> "feedback_plastic_vinylOff.mp4";
 
             case "PLASTIC:REMOVE_FOREIGN_MATERIAL" -> "feedback_plastic_foreign.mp4";
 
