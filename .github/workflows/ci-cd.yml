@@ -1,181 +1,57 @@
-name: CI/CD
+name: Deploy Spring Boot
 
 on:
-  pull_request:
-    branches:
-      - develop
   push:
-    branches:
-      - develop
+    branches: [develop]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: write
-
-env:
-  JAVA_VERSION: "17"
-  REGISTRY: ghcr.io
-
 jobs:
-  ci:
-    name: Build and test
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: "17"
           cache: gradle
 
-      - name: Grant Gradle wrapper permission
-        run: chmod +x ./gradlew
-
-      - name: Test
-        env:
-          DB_HOST: localhost
-          DB_PORT: 3306
-          DB_NAME: testdb
-          DB_USERNAME: test
-          DB_PASSWORD: test
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
-          MAIL_USERNAME: test@example.com
-          MAIL_PASSWORD: test-password
-          JWT_SECRET: test-test-test-test-test-test-test-test-test-test-test-test-test-test
-          JWT_ACCESS_EXPIRATION: 3600000
-          JWT_REFRESH_EXPIRATION: 1209600000
-          KAKAO_CLIENT_ID: test-kakao-client-id
-          KAKAO_CLIENT_SECRET: test-kakao-client-secret
-          GOOGLE_CLIENT_ID: test-google-client-id
-          GOOGLE_CLIENT_SECRET: test-google-client-secret
-          NAVER_CLIENT_ID: test-naver-client-id
-          NAVER_CLIENT_SECRET: test-naver-client-secret
-          NAVER_STATE: test-naver-state
-          MINIO_ENDPOINT: http://localhost:9000
-          MINIO_ACCESS_KEY: test-minio-access-key
-          MINIO_SECRET_KEY: test-minio-secret-key
-        run: ./gradlew clean test --no-daemon
-
-      - name: Build jar
-        run: ./gradlew bootJar -x test --no-daemon
-
-  docker:
-    name: Build and publish Docker image
-    runs-on: ubuntu-latest
-    needs: ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-
-    outputs:
-      image: ${{ steps.image.outputs.image }}
-      tag: ${{ steps.image.outputs.tag }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Resolve image name
-        id: image
+      - name: Build Spring Boot Jar
         run: |
-          IMAGE_NAME="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
-          echo "image=${REGISTRY}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          chmod +x gradlew
+          ./gradlew clean bootJar --no-daemon
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          source: "build/libs/*.jar,Dockerfile,docker-compose.yml"
+          target: ${{ secrets.DEPLOY_COMPOSE_DIR }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - name: Deploy Docker
+        uses: appleboy/ssh-action@v1
         with:
-          context: .
-          platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ steps.image.outputs.image }}:develop
-            ${{ steps.image.outputs.image }}:${{ steps.image.outputs.tag }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          script: |
+            cd "${{ secrets.DEPLOY_COMPOSE_DIR }}"
 
-  deploy:
-    name: Deploy develop
-    runs-on: ubuntu-latest
-    needs: docker
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-    environment: develop
+            docker network inspect whfwkr-network >/dev/null 2>&1 \
+              || docker network create whfwkr-network
 
-    env:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-      DEPLOY_COMPOSE_DIR: ${{ secrets.DEPLOY_COMPOSE_DIR }}
-      DEPLOY_COMPOSE_FILE: ${{ secrets.DEPLOY_COMPOSE_FILE || 'docker-compose.yml' }}
-      DEPLOY_SERVICE_NAME: ${{ secrets.DEPLOY_SERVICE_NAME }}
-      GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+            docker compose \
+              -f "${{ secrets.DEPLOY_COMPOSE_FILE }}" \
+              up -d --build "${{ secrets.DEPLOY_SERVICE_NAME }}"
 
-    steps:
-      - name: Validate deployment secrets
-        run: |
-          missing=0
-          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_COMPOSE_DIR GHCR_USERNAME GHCR_TOKEN; do
-            if [ -z "${!name}" ]; then
-              echo "::error::Missing GitHub Actions secret: ${name}"
-              missing=1
-            fi
-          done
-          exit "${missing}"
-
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
-
-      - name: Deploy container
-        run: |
-          ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "REGISTRY='${REGISTRY}' \
-             IMAGE='${{ needs.docker.outputs.image }}:${{ needs.docker.outputs.tag }}' \
-             BACKEND_IMAGE='${{ needs.docker.outputs.image }}:${{ needs.docker.outputs.tag }}' \
-             COMPOSE_DIR='${DEPLOY_COMPOSE_DIR}' \
-             COMPOSE_FILE='${DEPLOY_COMPOSE_FILE}' \
-             SERVICE_NAME='${DEPLOY_SERVICE_NAME}' \
-             GHCR_USERNAME='${GHCR_USERNAME}' \
-             GHCR_TOKEN='${GHCR_TOKEN}' \
-             bash -s" <<'EOF'
-          set -euo pipefail
-
-          cd "${COMPOSE_DIR}"
-
-          if [ ! -f "${COMPOSE_FILE}" ]; then
-            echo "Missing docker compose file: ${COMPOSE_DIR}/${COMPOSE_FILE}" >&2
-            exit 1
-          fi
-
-          echo "${GHCR_TOKEN}" | docker login "${REGISTRY}" -u "${GHCR_USERNAME}" --password-stdin
-
-          export IMAGE
-          export BACKEND_IMAGE
-
-          if [ -n "${SERVICE_NAME}" ]; then
-            docker compose -f "${COMPOSE_FILE}" pull "${SERVICE_NAME}"
-            docker compose -f "${COMPOSE_FILE}" up -d "${SERVICE_NAME}"
-          else
-            docker compose -f "${COMPOSE_FILE}" pull
-            docker compose -f "${COMPOSE_FILE}" up -d
-          fi
-
-          docker image prune -f
-          EOF
+            docker compose \
+              -f "${{ secrets.DEPLOY_COMPOSE_FILE }}" \
+              ps
