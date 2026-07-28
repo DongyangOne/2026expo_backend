@@ -64,6 +64,36 @@ public class AiDetection {
     @Column(name = "earned_exp")
     private Integer earnedExp;
 
+    @Column(name = "total_exp")
+    private Integer totalExp;
+
+    @Column(name = "user_character_id")
+    private Long userCharacterId;
+
+    @Column(name = "character_id")
+    private Long characterId;
+
+    @Column(name = "character_name")
+    private String characterName;
+
+    @Column(name = "evolution_stage")
+    private Integer evolutionStage;
+
+    @Column(name = "before_level")
+    private Integer beforeLevel;
+
+    @Column(name = "before_exp")
+    private Integer beforeExp;
+
+    @Column(name = "current_level")
+    private Integer currentLevel;
+
+    @Column(name = "current_exp")
+    private Integer currentExp;
+
+    @Column(name = "max_exp")
+    private Integer maxExp;
+
     @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
@@ -88,6 +118,16 @@ public class AiDetection {
             String guideVideoUrl,
             Integer level,
             Integer earnedExp,
+            Integer totalExp,
+            Long userCharacterId,
+            Long characterId,
+            String characterName,
+            Integer evolutionStage,
+            Integer beforeLevel,
+            Integer beforeExp,
+            Integer currentLevel,
+            Integer currentExp,
+            Integer maxExp,
             String imageUrl
     ) {
         this.classificationStatus = classificationStatus;
@@ -97,6 +137,16 @@ public class AiDetection {
         this.guideVideoUrl = guideVideoUrl;
         this.level = level;
         this.earnedExp = earnedExp;
+        this.totalExp = totalExp;
+        this.userCharacterId = userCharacterId;
+        this.characterId = characterId;
+        this.characterName = characterName;
+        this.evolutionStage = evolutionStage;
+        this.beforeLevel = beforeLevel;
+        this.beforeExp = beforeExp;
+        this.currentLevel = currentLevel;
+        this.currentExp = currentExp;
+        this.maxExp = maxExp;
         this.imageUrl = imageUrl;
         complete();
     }
