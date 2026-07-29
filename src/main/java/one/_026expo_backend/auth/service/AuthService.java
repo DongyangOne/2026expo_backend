@@ -27,6 +27,7 @@ import one._026expo_backend.user.enums.SocialType;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -78,14 +79,15 @@ public class AuthService {
             throw new BusinessException(ErrorCode.TERMS_NOT_AGREED);
         }
 
-        // 아이디/비밀번호 공통으로 필수
-        if (request.getLoginId() == null || request.getLoginId().isBlank()
-                || request.getPassword() == null || request.getPassword().isBlank()) {
+        // 아이디/비밀번호는 LOCAL 회원가입일 때만 필수
+        if (request.getSocial() == SocialType.LOCAL
+                && (request.getLoginId() == null || request.getLoginId().isBlank()
+                || request.getPassword() == null || request.getPassword().isBlank())) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
 
-        // 중복 아이디 체크
-        if (userRepository.existsByLoginId(request.getLoginId())) {
+        // 중복 아이디 체크 (아이디가 입력된 경우만)
+        if (StringUtils.hasText(request.getLoginId()) && userRepository.existsByLoginId(request.getLoginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_USER);
         }
 
@@ -117,10 +119,16 @@ public class AuthService {
                 throw new BusinessException(ErrorCode.DUPLICATE_USER);
             }
 
-            emailVerified = UseYnEnum.Y; // 소셜 제공자가 이미 이메일 인증을 완료한 것으로 간주
+            // 소셜 제공자가 이미 이메일 인증을 완료한 것으로 간주 (의도된 정책)
+            // 주의: request.getEmail()이 실제 소셜 프로필 이메일과 동일한지 서버에서 재검증하지 않음
+            // -> 소셜 로그인(kakaoLogin 등)에서 조회한 프로필 이메일과 signup 요청의 email이 다를 수 있음을 인지하고 유지 중
+            emailVerified = UseYnEnum.Y;
         }
 
-        String hashedPassword = passwordEncoder.encode(request.getPassword());
+        // 소셜 회원가입은 password가 없을 수 있어 encode(null) 예외를 피하기 위해 값이 있을 때만 암호화
+        String hashedPassword = StringUtils.hasText(request.getPassword())
+                ? passwordEncoder.encode(request.getPassword())
+                : null;
 
         if (verifiedKey != null) {
             // 회원가입이 성공했으므로 Redis 메일인증 기록 삭제
