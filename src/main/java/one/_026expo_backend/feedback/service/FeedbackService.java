@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import one._026expo_backend.character.domain.Character;
 import one._026expo_backend.character.domain.UserCharacter;
 import one._026expo_backend.character.enums.LevelPolicy;
+import one._026expo_backend.character.repository.CharacterRepository;
 import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.feedback.domain.AiDetection;
 import one._026expo_backend.feedback.domain.Feedback;
@@ -44,6 +45,7 @@ public class FeedbackService {
     private final UserRepository userRepository;
     private final AiDetectionRepository aiDetectionRepository;
     private final UserCharacterRepository userCharacterRepository;
+    private final CharacterRepository characterRepository;
     private final FeedbackDetailService feedbackDetailService;
 
     public List<RecyclingLogInfo> getRecentRecyclingLogs(long userId) {
@@ -109,6 +111,7 @@ public class FeedbackService {
             beforeExp = userCharacter.getCurrentExp();
 
             userCharacter.addExp(earnedExp);
+            syncCharacterWithLevel(userCharacter);
 
             userCharacterId = userCharacter.getUserCharacterId();
             Character character = userCharacter.getCharacter();
@@ -144,6 +147,14 @@ public class FeedbackService {
         );
 
         saveFeedbackIfDetected(user, classificationStatus, wasteType, guidanceCode, message);
+    }
+
+    private void syncCharacterWithLevel(UserCharacter userCharacter) {
+        Character character = characterRepository
+                .findFirstByEvolutionLevelLessThanEqualOrderByEvolutionLevelDesc(userCharacter.getCurrentLevel())
+                .orElse(userCharacter.getCharacter());
+
+        userCharacter.changeCharacter(character);
     }
 
     private int calculateTotalExp(int currentLevel, int currentExp) {

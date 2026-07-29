@@ -77,5 +77,13 @@ public class UserCharacter {
 
         this.updatedAt = LocalDateTime.now();
     }
-}
 
+    public void changeCharacter(Character character) {
+        if (character == null) {
+            return;
+        }
+
+        this.character = character;
+        this.updatedAt = LocalDateTime.now();
+    }
+}
