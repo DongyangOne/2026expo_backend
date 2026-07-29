@@ -28,14 +28,10 @@ public class SignupRequestDto {
     @Size(min= 2, max = 8, message = "이름은 2자 이상 8자 이하여야 합니다.")
     private String username;
 
-    @Schema(description = "로그인 아이디", example = "user123")
-    @NotBlank(message = "아이디는 필수입니다.")
-    @Size(min = 4, max = 12, message = "아이디는 4자 이상 12자 이하여야 합니다.")
+    @Schema(description = "로그인 아이디 (LOCAL 회원가입 시 필수)", example = "user123")
     private String loginId;
 
-    @Schema(description = "비밀번호", example = "password123*")
-    @NotBlank(message = "비밀번호는 필수입니다.")
-    @Size(min = 8, max = 16, message = "비밀번호는 8자 이상 16자 이하여야 합니다.")
+    @Schema(description = "비밀번호 (LOCAL 회원가입 시 필수)", example = "password123*")
     private String password;
 
     @Schema(description = "이메일", example = "user@example.com")
@@ -69,6 +65,31 @@ public class SignupRequestDto {
             return true;
         }
         return StringUtils.hasText(providerId) && providerId.length() <= 255;
+    }
+
+    /**
+     * LOCAL 회원가입일 때만 loginId를 강제한다.
+     */
+    @JsonIgnore
+    @AssertTrue(message = "아이디는 필수이며 4자 이상 12자 이하여야 합니다.")
+    public boolean isLoginIdValid() {
+        if (social != SocialType.LOCAL) {
+            // 소셜 회원가입은 loginId가 없어도 되지만, 값이 있다면 DB 컬럼 길이(12)는 넘을 수 없다
+            return loginId == null || loginId.length() <= 12;
+        }
+        return StringUtils.hasText(loginId) && loginId.length() >= 4 && loginId.length() <= 12;
+    }
+
+    /**
+     * LOCAL 회원가입일 때만 password를 강제한다.
+     */
+    @JsonIgnore
+    @AssertTrue(message = "비밀번호는 필수이며 8자 이상 16자 이하여야 합니다.")
+    public boolean isPasswordValid() {
+        if (social != SocialType.LOCAL) {
+            return password == null || password.length() <= 16;
+        }
+        return StringUtils.hasText(password) && password.length() >= 8 && password.length() <= 16;
     }
 
     public Users toEntity(String encodedPassword, UseYnEnum emailVerified) {
