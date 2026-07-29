@@ -11,6 +11,7 @@ import one._026expo_backend.auth.dto.response.FindIdResponseDto;
 import one._026expo_backend.auth.dto.response.ResetTokenResponseDto;
 import one._026expo_backend.auth.enums.EmailVerificationPurpose;
 import one._026expo_backend.global.enums.ErrorCode;
+import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.user.domain.Users;
 import one._026expo_backend.user.repository.UserRepository;
@@ -65,7 +66,7 @@ public class EmailService {
      * @throws BusinessException 이미 가입된 이메일이거나, 1분 이내에 재요청한 경우 발생
      */
     public EmailSendResponseDto sendVerificationEmail(EmailSendRequestDto dto) {
-        if (userRepository.existsByEmail(dto.getEmail())) {
+        if (userRepository.existsByEmailAndIsDeleted(dto.getEmail(), UseYnEnum.N)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
