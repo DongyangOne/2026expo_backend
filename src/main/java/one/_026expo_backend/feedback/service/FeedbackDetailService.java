@@ -85,11 +85,6 @@ public class FeedbackDetailService {
             return null;
         }
 
-        Optional<String> exactFeedbackDetailVideo = findExactFeedbackDetailVideoAddr(wasteType, guidanceCode);
-        if (exactFeedbackDetailVideo.isPresent()) {
-            return createVideoUrl(exactFeedbackDetailVideo.get());
-        }
-
         String fileName = resolveVideoFileName(wasteType, guidanceCode);
         if (StringUtils.hasText(fileName)) {
             return createPresignedVideoUrl(feedbackFolder + "/" + fileName);
@@ -111,15 +106,9 @@ public class FeedbackDetailService {
     }
 
     private Optional<String> findFeedbackDetailVideoAddr(WasteType wasteType, String guidanceCode) {
-        if (StringUtils.hasText(guidanceCode)) {
-            String normalizedGuidanceCode = guidanceCode.trim().toUpperCase();
-
-            Optional<FeedbackDetail> sameGuidanceDetail = feedbackDetailRepository
-                    .findFirstByGuidanceCodeOrderByFeedbackDetailIdAsc(normalizedGuidanceCode);
-            Optional<String> sameGuidanceVideoAddr = extractVideoAddr(sameGuidanceDetail);
-            if (sameGuidanceVideoAddr.isPresent()) {
-                return sameGuidanceVideoAddr;
-            }
+        Optional<String> exactFeedbackDetailVideo = findExactFeedbackDetailVideoAddr(wasteType, guidanceCode);
+        if (exactFeedbackDetailVideo.isPresent()) {
+            return exactFeedbackDetailVideo;
         }
 
         Optional<FeedbackDetail> defaultWasteDetail = feedbackDetailRepository
@@ -136,21 +125,7 @@ public class FeedbackDetailService {
             return anyWasteVideoAddr;
         }
 
-        Optional<FeedbackDetail> defaultDetail = feedbackDetailRepository
-                .findFirstByGuidanceCodeIsNullOrderByFeedbackDetailIdAsc();
-        Optional<String> defaultVideoAddr = extractVideoAddr(defaultDetail);
-        if (defaultVideoAddr.isPresent()) {
-            return defaultVideoAddr;
-        }
-
-        Optional<FeedbackDetail> minioDetail = feedbackDetailRepository
-                .findFirstByFeedbackVideoAddrStartingWithOrderByFeedbackDetailIdAsc(feedbackFolder + "/");
-        Optional<String> minioVideoAddr = extractVideoAddr(minioDetail);
-        if (minioVideoAddr.isPresent()) {
-            return minioVideoAddr;
-        }
-
-        return extractVideoAddr(feedbackDetailRepository.findFirstByOrderByFeedbackDetailIdAsc());
+        return Optional.empty();
     }
 
     private Optional<String> extractVideoAddr(Optional<FeedbackDetail> detail) {
@@ -224,7 +199,7 @@ public class FeedbackDetailService {
             // 페트 미압착
             case "PLASTIC:COMPRESS" -> "feedback_plastic_dent.mp4";
 
-            case "VINYL:EMPTY_CONTENTS" -> "feedback_vinyl_weight.mp4";
+            case "VINYL:EMPTY_CONTENTS" -> "feedback_vinly_weight.mp4";
 
             default -> null;
         };

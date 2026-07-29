@@ -1,10 +1,12 @@
 package one._026expo_backend.quiz.service;
 
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.character.domain.Character;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import one._026expo_backend.character.domain.UserCharacter;
 import one._026expo_backend.character.enums.LevelPolicy;
+import one._026expo_backend.character.repository.CharacterRepository;
 import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
@@ -48,6 +50,7 @@ public class QuizService {
     private final QuizSessionRedisRepository quizSessionRedisRepository;
     private final QuizRecordRepository quizRecordRepository;
     private final UserCharacterRepository userCharacterRepository;
+    private final CharacterRepository characterRepository;
 
     /**
      * 퀴즈 시작 로직
@@ -262,6 +265,7 @@ public class QuizService {
 
         // 파라미터 1개짜리 addExp 호출 (Enum에서 레벨업 요구치 자동 계산)
         userCharacter.addExp(earnedExp);
+        syncCharacterWithLevel(userCharacter);
 
         // 결과 정산 후, 현재 유저의 새로운 레벨 기준 최대 경험치를 Enum에서 조회
         int currentMaxExp = LevelPolicy.getMaxExpForLevel(userCharacter.getCurrentLevel());
@@ -290,6 +294,14 @@ public class QuizService {
                 userCharacter.getCurrentExp(),
                 currentMaxExp
         );
+    }
+
+    private void syncCharacterWithLevel(UserCharacter userCharacter) {
+        Character character = characterRepository
+                .findFirstByEvolutionLevelLessThanEqualOrderByEvolutionLevelDesc(userCharacter.getCurrentLevel())
+                .orElse(userCharacter.getCharacter());
+
+        userCharacter.changeCharacter(character);
     }
 
     private void validateSessionId(String sessionId) {

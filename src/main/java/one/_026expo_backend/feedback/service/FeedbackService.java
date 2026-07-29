@@ -1,7 +1,10 @@
 package one._026expo_backend.feedback.service;
 
 import lombok.RequiredArgsConstructor;
+import one._026expo_backend.character.domain.Character;
 import one._026expo_backend.character.domain.UserCharacter;
+import one._026expo_backend.character.enums.LevelPolicy;
+import one._026expo_backend.character.repository.CharacterRepository;
 import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.feedback.domain.AiDetection;
 import one._026expo_backend.feedback.domain.Feedback;
@@ -42,6 +45,7 @@ public class FeedbackService {
     private final UserRepository userRepository;
     private final AiDetectionRepository aiDetectionRepository;
     private final UserCharacterRepository userCharacterRepository;
+    private final CharacterRepository characterRepository;
     private final FeedbackDetailService feedbackDetailService;
 
     public List<RecyclingLogInfo> getRecentRecyclingLogs(long userId) {
@@ -86,15 +90,39 @@ public class FeedbackService {
         String guideVideoUrl = createGuideVideoUrl(classificationStatus, wasteType, guidanceCode);
 
         Integer earnedExp = null;
+        Integer totalExp = null;
         Integer level = null;
+        Long userCharacterId = null;
+        Long characterId = null;
+        String characterName = null;
+        Integer evolutionStage = null;
+        Integer beforeLevel = null;
+        Integer beforeExp = null;
+        Integer currentLevel = null;
+        Integer currentExp = null;
+        Integer maxExp = null;
 
         if (classificationStatus == WasteClassificationStatus.ALLOWED) {
             earnedExp = AI_CLASSIFICATION_SUCCESS_EXP;
             UserCharacter userCharacter = userCharacterRepository.findFirstByUser(user)
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_CHARACTER_NOT_FOUND));
 
+            beforeLevel = userCharacter.getCurrentLevel();
+            beforeExp = userCharacter.getCurrentExp();
+
             userCharacter.addExp(earnedExp);
-            level = userCharacter.getCurrentLevel();
+            syncCharacterWithLevel(userCharacter);
+
+            userCharacterId = userCharacter.getUserCharacterId();
+            Character character = userCharacter.getCharacter();
+            characterId = character.getCharacterId();
+            characterName = character.getCharacterName();
+            evolutionStage = character.getEvolutionStage();
+            currentLevel = userCharacter.getCurrentLevel();
+            currentExp = userCharacter.getCurrentExp();
+            maxExp = LevelPolicy.getMaxExpForLevel(currentLevel);
+            totalExp = calculateTotalExp(currentLevel, currentExp);
+            level = currentLevel;
         }
 
         detection.completeWithResult(
@@ -105,10 +133,36 @@ public class FeedbackService {
                 guideVideoUrl,
                 level,
                 earnedExp,
+                totalExp,
+                userCharacterId,
+                characterId,
+                characterName,
+                evolutionStage,
+                beforeLevel,
+                beforeExp,
+                currentLevel,
+                currentExp,
+                maxExp,
                 dto.getImageUrl()
         );
 
         saveFeedbackIfDetected(user, classificationStatus, wasteType, guidanceCode, message);
+    }
+
+    private void syncCharacterWithLevel(UserCharacter userCharacter) {
+        Character character = characterRepository
+                .findFirstByEvolutionLevelLessThanEqualOrderByEvolutionLevelDesc(userCharacter.getCurrentLevel())
+                .orElse(userCharacter.getCharacter());
+
+        userCharacter.changeCharacter(character);
+    }
+
+    private int calculateTotalExp(int currentLevel, int currentExp) {
+        int totalExp = currentExp;
+        for (int level = 0; level < currentLevel; level++) {
+            totalExp += LevelPolicy.getMaxExpForLevel(level);
+        }
+        return totalExp;
     }
 
     private void saveFeedbackIfDetected(
@@ -170,6 +224,18 @@ public class FeedbackService {
     }
 
     private String extractGuidanceCode(AiFeedbackRequestDto dto) {
+        if (dto.getStatus() == DetectionStatus.REJECTED
+                && dto.getRejection() != null
+                && StringUtils.hasText(dto.getRejection().getCode())) {
+            return dto.getRejection().getCode();
+        }
+
+        if (dto.getStatus() == DetectionStatus.GENERAL_WASTE
+                && dto.getGeneral() != null
+                && StringUtils.hasText(dto.getGeneral().getCode())) {
+            return dto.getGeneral().getCode();
+        }
+
         String guidanceCode = dto.getGuidance() == null ? null
                 : dto.getGuidance().stream()
                 .map(AiFeedbackRequestDto.GuidanceDto::getCode)
@@ -179,14 +245,6 @@ public class FeedbackService {
 
         if (StringUtils.hasText(guidanceCode)) {
             return guidanceCode;
-        }
-
-        if (dto.getRejection() != null && StringUtils.hasText(dto.getRejection().getCode())) {
-            return dto.getRejection().getCode();
-        }
-
-        if (dto.getGeneral() != null && StringUtils.hasText(dto.getGeneral().getCode())) {
-            return dto.getGeneral().getCode();
         }
 
         return null;
@@ -231,6 +289,18 @@ public class FeedbackService {
             return null;
         }
 
+        if (dto.getStatus() == DetectionStatus.REJECTED
+                && dto.getRejection() != null
+                && StringUtils.hasText(dto.getRejection().getMessage())) {
+            return dto.getRejection().getMessage();
+        }
+
+        if (dto.getStatus() == DetectionStatus.GENERAL_WASTE
+                && dto.getGeneral() != null
+                && StringUtils.hasText(dto.getGeneral().getMessage())) {
+            return dto.getGeneral().getMessage();
+        }
+
         if (dto.getGuidance() != null && !dto.getGuidance().isEmpty()) {
             String guidanceText = dto.getGuidance().stream()
                     .map(AiFeedbackRequestDto.GuidanceDto::getMessage)
@@ -240,16 +310,6 @@ public class FeedbackService {
             if (StringUtils.hasText(guidanceText)) {
                 return guidanceText;
             }
-        }
-
-        if (dto.getRejection() != null
-                && StringUtils.hasText(dto.getRejection().getMessage())) {
-            return dto.getRejection().getMessage();
-        }
-
-        if (dto.getGeneral() != null
-                && StringUtils.hasText(dto.getGeneral().getMessage())) {
-            return dto.getGeneral().getMessage();
         }
 
         return null;
