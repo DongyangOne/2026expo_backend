@@ -61,7 +61,7 @@ public class AuthService {
         if (loginId == null || loginId.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_LOGIN_ID);
         }
-        return userRepository.existsByLoginId(loginId) ? UseYnEnum.Y : UseYnEnum.N;
+        return userRepository.existsByLoginIdAndIsDeleted(loginId, UseYnEnum.N) ? UseYnEnum.Y : UseYnEnum.N;
     }
 
     /**
@@ -87,12 +87,13 @@ public class AuthService {
         }
 
         // 중복 아이디 체크 (아이디가 입력된 경우만)
-        if (StringUtils.hasText(request.getLoginId()) && userRepository.existsByLoginId(request.getLoginId())) {
+        if (StringUtils.hasText(request.getLoginId())
+                && userRepository.existsByLoginIdAndIsDeleted(request.getLoginId(), UseYnEnum.N)) {
             throw new BusinessException(ErrorCode.DUPLICATE_USER);
         }
 
         // 중복 이메일 체크
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmailAndIsDeleted(request.getEmail(), UseYnEnum.N)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
