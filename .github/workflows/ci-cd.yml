@@ -48,10 +48,6 @@ jobs:
             docker network inspect expo-network >/dev/null 2>&1 \
               || docker network create expo-network
 
-            docker compose \
-              -f "${{ secrets.DEPLOY_COMPOSE_FILE }}" \
-              up -d --build "${{ secrets.DEPLOY_SERVICE_NAME }}"
+            docker compose up -d --build "${{ secrets.DEPLOY_SERVICE_NAME }}"
 
-            docker compose \
-              -f "${{ secrets.DEPLOY_COMPOSE_FILE }}" \
-              ps
+            docker compose ps
