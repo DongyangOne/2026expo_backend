@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<Users, Long> {
 
 	boolean existsByLoginIdAndIsDeleted(String loginId, UseYnEnum isDeleted);
 
+    boolean existsByLoginIdAndEmailAndIsDeleted(String loginId, String email, UseYnEnum isDeleted);
+
 	boolean existsByEmailAndIsDeleted(String email, UseYnEnum isDeleted);
 
     boolean existsBySocialTypeAndSocialProviderIdAndIsDeleted(SocialType socialType, String socialProviderId, UseYnEnum isDeleted);
@@ -32,7 +34,9 @@ public interface UserRepository extends JpaRepository<Users, Long> {
     Optional<Users> findBySocialTypeAndSocialProviderIdAndIsDeleted(SocialType socialType, String socialProviderId, UseYnEnum isDeleted);
 
 	Optional<Users> findByLoginIdAndEmail(String loginId, String email);
+	Optional<Users> findByEmailAndIsDeleted(String email, UseYnEnum isDeleted);
 
 	Optional<Users> findByLoginId(String loginId);
+	Optional<Users> findByLoginIdAndEmailAndIsDeleted(String loginId, String email, UseYnEnum isDeleted);
 
 }

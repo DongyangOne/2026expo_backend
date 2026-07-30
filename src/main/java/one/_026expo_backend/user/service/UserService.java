@@ -266,7 +266,7 @@ public class UserService {
             return;
         }
 
-        if (userRepository.existsByLoginId(normalizedLoginId)) {
+        if (userRepository.existsByLoginIdAndIsDeleted(normalizedLoginId, UseYnEnum.N)) {
             throw new BusinessException(ErrorCode.DUPLICATE_USER);
         }
 
