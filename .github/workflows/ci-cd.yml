@@ -45,8 +45,8 @@ jobs:
           script: |
             cd "${{ secrets.DEPLOY_COMPOSE_DIR }}"
 
-            docker network inspect whfwkr-network >/dev/null 2>&1 \
-              || docker network create whfwkr-network
+            docker network inspect expo-network >/dev/null 2>&1 \
+              || docker network create expo-network
 
             docker compose \
               -f "${{ secrets.DEPLOY_COMPOSE_FILE }}" \
