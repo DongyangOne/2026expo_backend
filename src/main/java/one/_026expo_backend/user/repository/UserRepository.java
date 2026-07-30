@@ -17,18 +17,26 @@ public interface UserRepository extends JpaRepository<Users, Long> {
 
 	boolean existsByLoginIdAndEmail(String loginId, String email);
 
+	boolean existsByLoginIdAndIsDeleted(String loginId, UseYnEnum isDeleted);
+
+    boolean existsByLoginIdAndEmailAndIsDeleted(String loginId, String email, UseYnEnum isDeleted);
+
 	boolean existsByEmailAndIsDeleted(String email, UseYnEnum isDeleted);
+
+    boolean existsBySocialTypeAndSocialProviderIdAndIsDeleted(SocialType socialType, String socialProviderId, UseYnEnum isDeleted);
 
 	Optional<Users> findByLoginIdAndIsDeleted(String loginId, UseYnEnum isDeleted);
 
     Optional<Users> findByIdAndIsDeletedAndDeletedAtIsNull(Long id, UseYnEnum isDeleted);
 
-    Optional<Users> findBySocialTypeAndSocialProviderId(SocialType socialType, String socialProviderId);
 
     Optional<Users> findByEmail(String email);
+    Optional<Users> findBySocialTypeAndSocialProviderIdAndIsDeleted(SocialType socialType, String socialProviderId, UseYnEnum isDeleted);
 
 	Optional<Users> findByLoginIdAndEmail(String loginId, String email);
+	Optional<Users> findByEmailAndIsDeleted(String email, UseYnEnum isDeleted);
 
 	Optional<Users> findByLoginId(String loginId);
+	Optional<Users> findByLoginIdAndEmailAndIsDeleted(String loginId, String email, UseYnEnum isDeleted);
 
 }

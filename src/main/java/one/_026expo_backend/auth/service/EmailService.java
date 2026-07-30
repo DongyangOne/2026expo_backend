@@ -137,8 +137,8 @@ public class EmailService {
      * @throws BusinessException 가입되지 않은 이메일이거나, 1분 이내에 재요청한 경우 발생
      */
     public EmailSendResponseDto sendFindIdEmail(FindIdRequestDto dto) {
-        // 가입하지 않은 이메일
-        if (!userRepository.existsByEmail(dto.getEmail())) {
+        // 가입하지 않았거나 탈퇴한 이메일
+        if (!userRepository.existsByEmailAndIsDeleted(dto.getEmail(), UseYnEnum.N)) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
@@ -166,7 +166,7 @@ public class EmailService {
         verifyCode(dto.getEmail(), dto.getAuthCode(), EmailVerificationPurpose.FIND_ID);
 
         try {
-            Users user = userRepository.findByEmail(dto.getEmail())
+            Users user = userRepository.findByEmailAndIsDeleted(dto.getEmail(), UseYnEnum.N)
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
             log.info("아이디 찾기 검증 완료 - 대상: {}", dto.getEmail());
@@ -185,7 +185,7 @@ public class EmailService {
      */
     public EmailSendResponseDto sendFindPasswordEmail(FindPasswordRequestDto dto) {
         // 유저를 찾을 수 없음
-        if (!userRepository.existsByLoginIdAndEmail(dto.getLoginId(), dto.getEmail()))
+        if (!userRepository.existsByLoginIdAndEmailAndIsDeleted(dto.getLoginId(), dto.getEmail(), UseYnEnum.N))
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
 
         EmailAuthInfo authInfo = prepareAuthCode(dto.getEmail(), EmailVerificationPurpose.RESET_PASSWORD);
@@ -212,7 +212,7 @@ public class EmailService {
         verifyCode(dto.getEmail(), dto.getAuthCode(), EmailVerificationPurpose.RESET_PASSWORD);
 
         try {
-            Users user = userRepository.findByLoginIdAndEmail(dto.getLoginId(), dto.getEmail())
+            Users user = userRepository.findByLoginIdAndEmailAndIsDeleted(dto.getLoginId(), dto.getEmail(), UseYnEnum.N)
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
             // 임시 권한 토큰 발급 및 저장 (UUID)
@@ -247,7 +247,7 @@ public class EmailService {
         }
 
         try {
-            Users user = userRepository.findByLoginId(loginId)
+            Users user = userRepository.findByLoginIdAndIsDeleted(loginId, UseYnEnum.N)
                     .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
             String newPassword = passwordEncoder.encode(dto.getNewPassword());
