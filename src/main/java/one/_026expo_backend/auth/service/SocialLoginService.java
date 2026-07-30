@@ -121,12 +121,8 @@ public class SocialLoginService {
             if (socialType == SocialType.KAKAO) throw new BusinessException(ErrorCode.KAKAO_EMAIL_REQUIRED);
         }
 
-        return userRepository.findBySocialTypeAndSocialProviderId(socialType, profile.providerId())
-                .map(existingUser -> { // 존재하는 유저인 경우
-                    if (existingUser.getIsDeleted() != UseYnEnum.N) { // 삭제된 유저인 경우
-                        throw new BusinessException(ErrorCode.DELETED_USER);
-                    }
-
+        return userRepository.findBySocialTypeAndSocialProviderIdAndIsDeleted(socialType, profile.providerId(), UseYnEnum.N)
+                .map(existingUser -> { // 활성 상태인 유저가 있는 경우
                     existingUser.updateRememberMe(rememberMe); // 이미 존재하는 경우로 로그인하는 경우 rememberMe 상태 업데이트
 
                     String accessToken = jwtProvider.createAccessToken(existingUser.getId(), Role.USER);
@@ -145,12 +141,19 @@ public class SocialLoginService {
                             refreshToken
                     );
                 })
-                .orElseGet(() -> SocialLoginResponseDto.signupRequired( // 존재하지 않는 유저인 경우
-                        profile.providerId(),
-                        socialType,
-                        resolveUsername(profile.name(), defaultUsername),
-                        profile.email()
-                ));
+                .orElseGet(() -> { // 활성 유저가 없는 경우
+                    // 탈퇴한 계정으로 재로그인을 시도한 경우 (재가입은 signup API로 가능)
+                    if (userRepository.existsBySocialTypeAndSocialProviderIdAndIsDeleted(socialType, profile.providerId(), UseYnEnum.Y)) {
+                        throw new BusinessException(ErrorCode.DELETED_USER);
+                    }
+
+                    return SocialLoginResponseDto.signupRequired( // 가입 이력 자체가 없는 경우
+                            profile.providerId(),
+                            socialType,
+                            resolveUsername(profile.name(), defaultUsername),
+                            profile.email()
+                    );
+                });
     }
 
     /**

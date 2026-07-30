@@ -115,8 +115,8 @@ public class AuthService {
                 throw new BusinessException(ErrorCode.INVALID_INPUT); // 소셜 회원가입인데 providerId가 없는 경우
             }
 
-            // 이미 가입된 소셜 계정인지 체크
-            if (userRepository.findBySocialTypeAndSocialProviderId(request.getSocial(), request.getProviderId()).isPresent()) {
+            // 이미 가입된 소셜 계정인지 체크 (탈퇴한 계정은 재가입 가능하도록 제외)
+            if (userRepository.existsBySocialTypeAndSocialProviderIdAndIsDeleted(request.getSocial(), request.getProviderId(), UseYnEnum.N)) {
                 throw new BusinessException(ErrorCode.DUPLICATE_USER);
             }
 
