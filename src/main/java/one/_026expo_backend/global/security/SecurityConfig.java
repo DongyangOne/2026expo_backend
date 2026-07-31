@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/quiz/**").authenticated()
                         .requestMatchers("/api/v1/feedback/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/logout").hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/feedback-detail/result").permitAll()
                         .requestMatchers("/api/v1/tablet/classifications/**").permitAll()
