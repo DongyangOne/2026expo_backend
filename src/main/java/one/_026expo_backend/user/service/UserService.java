@@ -10,6 +10,7 @@ import one._026expo_backend.auth.enums.EmailVerificationPurpose;
 import one._026expo_backend.auth.service.EmailService;
 import one._026expo_backend.character.domain.Character;
 import one._026expo_backend.character.domain.UserCharacter;
+import one._026expo_backend.character.enums.LevelPolicy;
 import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.feedback.service.FeedbackService;
 import one._026expo_backend.global.enums.ErrorCode;
@@ -37,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.CharacterInfo;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.QuizProfileInfo;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecyclingLogInfo;
+import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.WrongQuizInfo;
 
 @Slf4j
 @Service
@@ -181,8 +183,10 @@ public class UserService {
         QuizProfileInfo quizProfile = quizService.getQuizProfileInfo(userId);
         // 사용자의 분리수거 로그 정보
         List<RecyclingLogInfo> recentRecyclingLogs = feedbackService.getRecentRecyclingLogs(userId);
+        // 사용자의 최근 틀린 퀴즈 정보
+        WrongQuizInfo wrongQuizInfo = quizService.getLatestWrongQuiz(userId);
 
-        return UserDashboardResponseDto.of(character, quizProfile, recentRecyclingLogs);
+        return UserDashboardResponseDto.of(character, quizProfile, recentRecyclingLogs, wrongQuizInfo);
     }
 
     /**
@@ -200,11 +204,22 @@ public class UserService {
         // MinIO에 저장된 이미지 주소
         String imageUrl = getMinioImageUrl(currentCharacter.getImageUrl());
 
+        int level = userCharacter.getCurrentLevel();
+        int currentExp = userCharacter.getCurrentExp();
+
+        int maxExp = LevelPolicy.getMaxExpForLevel(level);
+        int remainingExp = maxExp - currentExp;
+        int expPercentage = (currentExp * 100) / maxExp;
+
         return CharacterInfo.of(
                 currentCharacter.getCharacterId(),
                 currentCharacter.getCharacterName(),
                 imageUrl,
-                currentCharacter.getEvolutionStage()
+                currentCharacter.getEvolutionStage(),
+                level,
+                currentExp,
+                remainingExp,
+                expPercentage
         );
     }
 
