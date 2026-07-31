@@ -28,9 +28,6 @@ public class QuizResultResponseDto {
     @Schema(description = "결과 문구", example = "완벽해요! 진짜 분리수거 박사네요")
     private String resultMessage;
 
-    @Schema(description = "유저 캐릭터 id", example = "1")
-    private Long userCharacterId;
-
     @Schema(description = "경험치 반영 전 레벨", example = "1")
     private Integer beforeLevel;
 
@@ -55,12 +52,31 @@ public class QuizResultResponseDto {
     @Schema(description = "다음 레벨까지 남은 경험치", example = "62")
     private Integer remainingExp;
 
+    @Schema(description = "유저가 보유한 캐릭터 ID", example = "1")
+    private Long userCharacterId;
+
+    @Schema(description = "현재 적용된 캐릭터 원본 ID", example = "3")
+    private Long characterId;
+
+    @Schema(description = "현재 적용된 캐릭터 이름", example = "갓 태어난 아기")
+    private String characterName;
+
+    @Schema(description = "현재 적용된 캐릭터 이미지 URL", example = "https://minio.oneexpo.kro.kr/expo/character/3.png")
+    private String characterImageUrl;
+
+    @Schema(description = "현재 적용된 캐릭터 진화 단계", example = "2")
+    private Integer evolutionStage;
+
     public static QuizResultResponseDto of(
             Integer totalCount,
             Integer correctCount,
             Integer earnedExp,
             String resultMessage,
             Long userCharacterId,
+            Long characterId,
+            String characterName,
+            String characterImageUrl,
+            Integer evolutionStage,
             Integer beforeLevel,
             Integer beforeExp,
             Integer currentLevel,
@@ -78,8 +94,6 @@ public class QuizResultResponseDto {
                 .correctRate(correctRate)
                 .earnedExp(earnedExp)
                 .resultMessage(resultMessage)
-                .userCharacterId(userCharacterId)
-                .beforeLevel(beforeLevel)
                 .beforeExp(beforeExp)
                 .currentLevel(currentLevel)
                 .currentExp(currentExp)
@@ -87,6 +101,12 @@ public class QuizResultResponseDto {
                 .maxExp(maxExp)
                 .expPercent(expPercent)
                 .remainingExp(maxExp - currentExp)
+                .userCharacterId(userCharacterId)
+                .characterId(characterId)
+                .characterName(characterName)
+                .characterImageUrl(characterImageUrl)
+                .evolutionStage(evolutionStage)
+                .beforeLevel(beforeLevel)
                 .build();
     }
 }

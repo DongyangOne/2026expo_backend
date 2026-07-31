@@ -1,7 +1,11 @@
 package one._026expo_backend.quiz.service;
 
+import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.MinioClient;
+import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.character.domain.Character;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import one._026expo_backend.character.domain.UserCharacter;
@@ -35,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @Service
@@ -52,6 +57,13 @@ public class QuizService {
     private final QuizRecordRepository quizRecordRepository;
     private final UserCharacterRepository userCharacterRepository;
     private final CharacterRepository characterRepository;
+    private final MinioClient minioClient;
+
+    @Value("${minio.bucket-name}")
+    private String bucketName;
+
+    @Value("${minio.url-expiry-hours}")
+    private int urlExpiryHours;
 
     /**
      * 퀴즈 시작 로직
@@ -283,12 +295,18 @@ public class QuizService {
                 }
         );
 
+        Character currentCharacter = userCharacter.getCharacter();
+
         return QuizResultResponseDto.of(
                 totalCount,
                 correctCount,
                 earnedExp,
                 resultMessage,
                 userCharacter.getUserCharacterId(),
+                currentCharacter.getCharacterId(),
+                currentCharacter.getCharacterName(),
+                getMinioImageUrl(currentCharacter.getImageUrl()),
+                currentCharacter.getEvolutionStage(),
                 beforeLevel,
                 beforeExp,
                 userCharacter.getCurrentLevel(),
@@ -326,6 +344,25 @@ public class QuizService {
         }
         if (!UUID_PATTERN.matcher(sessionId).matches()) {
             throw new BusinessException(ErrorCode.INVALID_SESSION_FORMAT);
+        }
+    }
+
+    private String getMinioImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
+        }
+
+        try {
+            return minioClient.getPresignedObjectUrl(
+                    GetPresignedObjectUrlArgs.builder()
+                            .method(Method.GET)
+                            .bucket(bucketName)
+                            .object(imageUrl)
+                            .expiry(urlExpiryHours, TimeUnit.HOURS)
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.IMAGE_URL_GENERATION_FAILED);
         }
     }
 }
