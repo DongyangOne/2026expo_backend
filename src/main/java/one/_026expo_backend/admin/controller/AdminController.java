@@ -9,10 +9,12 @@ import one._026expo_backend.admin.dto.request.AdminLoginRequestDto;
 import one._026expo_backend.admin.dto.request.AdminRefreshTokenRequestDto;
 import one._026expo_backend.admin.dto.request.AdminSignupRequestDto;
 import one._026expo_backend.admin.dto.response.AdminLoginResponseDto;
+import one._026expo_backend.admin.dto.response.AdminLogoutResponseDto;
 import one._026expo_backend.admin.dto.response.AdminRefreshTokenResponseDto;
 import one._026expo_backend.admin.dto.response.AdminSignupResponseDto;
 import one._026expo_backend.admin.service.AdminService;
 import one._026expo_backend.auth.dto.response.ExistsCheckResponseDto;
+import one._026expo_backend.global.config.auth.CurrentUser;
 import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
@@ -78,6 +80,20 @@ public class AdminController {
     public ResponseEntity<ApiResponse<AdminRefreshTokenResponseDto>> reissue(
             @Valid @RequestBody AdminRefreshTokenRequestDto request) {
         AdminRefreshTokenResponseDto response = adminService.reissueToken(request);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    /**
+     * 관리자 로그아웃 API
+     *
+     * @param adminId 인증된 관리자 식별자
+     * @return 로그아웃 완료 응답
+     */
+    @Operation(summary = "관리자 로그아웃", description = "현재 로그인한 관리자의 Refresh Token을 무효화해 로그아웃을 처리합니다.")
+    @ApiErrorExceptions({ErrorCode.UNAUTHORIZED, ErrorCode.FORBIDDEN, ErrorCode.ADMIN_NOT_FOUND})
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<AdminLogoutResponseDto>> logout(@CurrentUser Long adminId) {
+        AdminLogoutResponseDto response = adminService.logout(adminId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 }

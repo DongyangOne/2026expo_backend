@@ -9,6 +9,7 @@ import one._026expo_backend.admin.dto.request.AdminLoginRequestDto;
 import one._026expo_backend.admin.dto.request.AdminRefreshTokenRequestDto;
 import one._026expo_backend.admin.dto.request.AdminSignupRequestDto;
 import one._026expo_backend.admin.dto.response.AdminLoginResponseDto;
+import one._026expo_backend.admin.dto.response.AdminLogoutResponseDto;
 import one._026expo_backend.admin.dto.response.AdminRefreshTokenResponseDto;
 import one._026expo_backend.admin.dto.response.AdminSignupResponseDto;
 import one._026expo_backend.admin.repository.AdminRepository;
@@ -146,5 +147,19 @@ public class AdminService {
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .build();
+    }
+
+    @Transactional
+    public AdminLogoutResponseDto logout(Long adminId) {
+        if (adminId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Admin admin = adminRepository.findById(adminId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_NOT_FOUND));
+
+        admin.clearRefreshToken();
+
+        return AdminLogoutResponseDto.of("관리자 로그아웃이 완료되었습니다.");
     }
 }

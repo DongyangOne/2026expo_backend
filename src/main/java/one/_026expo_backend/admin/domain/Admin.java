@@ -37,4 +37,9 @@ public class Admin extends BaseEntity {
         this.refreshToken = refreshToken;
         this.refreshExpiredAt = refreshExpiredAt;
     }
+
+    public void clearRefreshToken() {
+        this.refreshToken = null;
+        this.refreshExpiredAt = null;
+    }
 }
