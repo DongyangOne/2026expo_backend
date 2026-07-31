@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import one._026expo_backend.feedback.enums.WasteType;
 import one._026expo_backend.quiz.domain.Quiz;
-import one._026expo_backend.quiz.enums.QuizAnswer;
 
 import java.time.LocalDateTime;
 import java.util.List;
