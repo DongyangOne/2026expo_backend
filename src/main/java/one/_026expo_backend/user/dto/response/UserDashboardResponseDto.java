@@ -3,6 +3,7 @@ package one._026expo_backend.user.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import one._026expo_backend.feedback.enums.WasteType;
+import one._026expo_backend.quiz.domain.Quiz;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +24,9 @@ public class UserDashboardResponseDto {
     @Schema(description = "최근 10개 분리수거 로그")
     private List<RecyclingLogInfo> recyclingLogInfo;
 
+    @Schema(description = "최근 틀린 퀴즈 ")
+    private WrongQuizInfo wrongQuizInfo;
+
 
     @Getter
     @Builder
@@ -36,19 +40,37 @@ public class UserDashboardResponseDto {
         @Schema(description = "캐릭터 이름", example = "알")
         private String characterName;
 
-        @Schema(description = "MinIO 이미지 URL", example = "https://minio-storage.../.../0.png")
+        @Schema(description = "MinIO 이미지 URL", example = "https://minio.oneexpo.kro.kr/expo/.../.../0.png")
         private String imageUrl;
 
         @Schema(description = "현재 진화 단계", example = "1")
         private Integer evolutionStage;
 
+        @Schema(description = "현재 레벨", example = "0")
+        private Integer level;
+
+        @Schema(description = "현재 경험치", example = "30")
+        private Integer currentExp;
+
+        @Schema(description = "다음 레벨까지 남은 경험치", example = "70")
+        private Integer remainingExp;
+
+        @Schema(description = "경험치 진행률", example = "30")
+        private Integer expPercentage;
+
         public static CharacterInfo of(
-                Long characterId, String characterName, String imageUrl, Integer evolutionStage) {
+                Long characterId, String characterName, String imageUrl, Integer evolutionStage,
+                Integer level, Integer currentExp, Integer remainingExp, Integer expPercentage
+        ) {
             return CharacterInfo.builder()
                     .characterId(characterId)
                     .characterName(characterName)
                     .imageUrl(imageUrl)
                     .evolutionStage(evolutionStage)
+                    .level(level)
+                    .currentExp(currentExp)
+                    .remainingExp(remainingExp)
+                    .expPercentage(expPercentage)
                     .build();
         }
     }
@@ -93,14 +115,41 @@ public class UserDashboardResponseDto {
         }
     }
 
+    @Getter
+    @Builder
+    @NoArgsConstructor(access = AccessLevel.PROTECTED)
+    @AllArgsConstructor
+    @Schema(description = "4. 내부 최근 틀린 퀴즈 DTO")
+    public static class WrongQuizInfo {
+
+        @Schema(description = "퀴즈 ID", example = "15")
+        private Long quizId;
+
+        @Schema(description = "문제")
+        private String question;
+
+        @Schema(description = "문제 해설")
+        private String explan;
+
+        public static WrongQuizInfo of(Quiz quiz) {
+            return WrongQuizInfo.builder()
+                    .quizId(quiz.getQuizId())
+                    .question(quiz.getQuestion())
+                    .explan(quiz.getExplan())
+                    .build();
+        }
+    }
+
     public static UserDashboardResponseDto of(
             CharacterInfo characterInfo,
             QuizProfileInfo quizProfileInfo,
-            List<RecyclingLogInfo> recyclingLogInfo) {
+            List<RecyclingLogInfo> recyclingLogInfo,
+            WrongQuizInfo wrongQuizInfo) {
         return UserDashboardResponseDto.builder()
                 .characterInfo(characterInfo)
                 .quizProfileInfo(quizProfileInfo)
                 .recyclingLogInfo(recyclingLogInfo)
+                .wrongQuizInfo(wrongQuizInfo)
                 .build();
     }
 }

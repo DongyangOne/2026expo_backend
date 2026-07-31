@@ -26,6 +26,7 @@ import one._026expo_backend.quiz.repository.QuizSessionRedisRepository;
 import one._026expo_backend.user.repository.UserRepository;
 import one._026expo_backend.user.domain.Users;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.QuizProfileInfo;
+import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.WrongQuizInfo;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -294,6 +295,21 @@ public class QuizService {
                 userCharacter.getCurrentExp(),
                 currentMaxExp
         );
+    }
+
+    /**
+     * 유저의 틀린 문제들 중 가장 최근의 것을 반환
+     *
+     * @param userId 틀린 문제를 반환할 사용자의 고유 ID
+     * @return 푼 문제 중 틀린 문제가 있으면 가장 최근의 것을 반환, 없으면 null을 반환
+     */
+    @Transactional(readOnly = true)
+    public WrongQuizInfo getLatestWrongQuiz(Long userId) {
+
+        return quizRecordRepository
+                .findFirstByUsersIdAndIsCorrectOrderByAnsweredAtDesc(userId, UseYnEnum.N)
+                .map(record -> WrongQuizInfo.of(record.getQuiz()))
+                .orElse(null);
     }
 
     private void syncCharacterWithLevel(UserCharacter userCharacter) {

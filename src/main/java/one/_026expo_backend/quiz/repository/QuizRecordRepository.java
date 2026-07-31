@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
     boolean existsByUsersAndQuizAndSessionId(Users users, Quiz quiz, String sessionId);
@@ -33,4 +35,7 @@ public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
 
     // 특정 유저가 맞춘 문제 수
     int countByUsersIdAndIsCorrect(long userId, UseYnEnum isCorrect);
+
+    // 특정 유저가 틀린 문제 중 가장 최근의 것을 반환
+    Optional<QuizRecord> findFirstByUsersIdAndIsCorrectOrderByAnsweredAtDesc(long userId, UseYnEnum isCorrect);
 }
