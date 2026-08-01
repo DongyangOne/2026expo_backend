@@ -1,6 +1,7 @@
 package one._026expo_backend.feedback.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.feedback.domain.AiDetection;
 import one._026expo_backend.feedback.dto.response.AiDetectionCreateResponseDto;
 import one._026expo_backend.feedback.repository.AiDetectionRepository;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AiDetectionService {
@@ -34,6 +36,7 @@ public class AiDetectionService {
                 .build();
 
         aiDetectionRepository.save(detection);
+        log.info("[AI_DETECTION_START_CREATED] userId={}, clientId={}", userId, clientId);
 
         return new AiDetectionCreateResponseDto(clientId);
     }

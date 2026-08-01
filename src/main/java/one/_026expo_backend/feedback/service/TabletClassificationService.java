@@ -4,6 +4,7 @@ import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.character.domain.Character;
 import one._026expo_backend.character.repository.CharacterRepository;
 import one._026expo_backend.feedback.domain.AiDetection;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class TabletClassificationService {
@@ -36,7 +38,10 @@ public class TabletClassificationService {
     public TabletClassificationResponseDto getResult(String clientId) {
         return aiDetectionRepository.findByClientId(clientId)
                 .map(this::toResponse)
-                .orElseGet(() -> TabletClassificationResponseDto.waiting(clientId));
+                .orElseGet(() -> {
+                    log.info("[TABLET_CLASSIFICATION_RESULT_WAITING] clientId={}", clientId);
+                    return TabletClassificationResponseDto.waiting(clientId);
+                });
     }
 
     private TabletClassificationResponseDto toResponse(AiDetection detection) {
@@ -46,7 +51,18 @@ public class TabletClassificationService {
             characterImageUrl = createCharacterImageUrl(detection.getCharacterId());
         }
 
-        return TabletClassificationResponseDto.from(detection, characterImageUrl);
+        TabletClassificationResponseDto response = TabletClassificationResponseDto.from(detection, characterImageUrl);
+        log.info(
+                "[TABLET_CLASSIFICATION_RESULT_FOUND] clientId={}, completed={}, status={}, wasteType={}, guideVideoUrlPresent={}, characterImageUrlPresent={}",
+                response.getClientId(),
+                response.isCompleted(),
+                response.getStatus(),
+                response.getWasteType(),
+                response.getGuideVideoUrl() != null && !response.getGuideVideoUrl().isBlank(),
+                characterImageUrl != null && !characterImageUrl.isBlank()
+        );
+
+        return response;
     }
 
     private String createCharacterImageUrl(Long characterId) {
