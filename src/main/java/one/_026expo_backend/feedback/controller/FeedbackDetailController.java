@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.feedback.dto.response.AdminFeedbackResponseDto;
 import one._026expo_backend.feedback.dto.response.FeedbackDetailResponseDto;
 import one._026expo_backend.feedback.service.FeedbackDetailService;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/feedback-detail")
 @RequiredArgsConstructor
+@Slf4j
 @Validated
 @Tag(name = "feedbackDetail", description = "피드백 디테일 엔드포인트")
 public class FeedbackDetailController {
@@ -73,7 +75,9 @@ public class FeedbackDetailController {
     )
     @PostMapping("/result")
     public ApiResponse<Void> receiveAiResult(@Valid @RequestBody AiFeedbackRequestDto requestDto) {
+        log.info("[AI_CALLBACK_RECEIVED] clientId={}, status={}", requestDto.getClientId(), requestDto.getStatus());
         feedbackService.saveAiFeedback(requestDto);
+        log.info("[AI_CALLBACK_HANDLED] clientId={}", requestDto.getClientId());
         return ApiResponse.ok(null);
     }
 
@@ -82,6 +86,7 @@ public class FeedbackDetailController {
     public ResponseEntity<ApiResponse<AiDetectionCreateResponseDto>>
     createDetection(@AuthenticationPrincipal Long userId) {
         AiDetectionCreateResponseDto response = aiDetectionService.createDetection(userId);
+        log.info("[AI_DETECTION_START_RESPONSE] userId={}, clientId={}", userId, response.getClientId());
 
         return ResponseEntity.ok(ApiResponse.ok(response));
     }

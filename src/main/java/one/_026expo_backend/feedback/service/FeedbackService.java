@@ -1,6 +1,7 @@
 package one._026expo_backend.feedback.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.character.domain.Character;
 import one._026expo_backend.character.domain.UserCharacter;
 import one._026expo_backend.character.enums.LevelPolicy;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecyclingLogInfo;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class FeedbackService {
@@ -73,12 +75,19 @@ public class FeedbackService {
 
     @Transactional
     public void saveAiFeedback(AiFeedbackRequestDto dto) {
+        log.info("[AI_CALLBACK_PROCESS_START] clientId={}, rawStatus={}", dto.getClientId(), dto.getStatus());
+
         AiDetection detection = aiDetectionRepository
                 .findByClientId(dto.getClientId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.DETECTION_NOT_FOUND));
 
         if (detection.getStatus() == DetectionProcessStatus.COMPLETED
                 && detection.getClassificationStatus() != null) {
+            log.info(
+                    "[AI_CALLBACK_DUPLICATE_IGNORED] clientId={}, savedStatus={}",
+                    dto.getClientId(),
+                    detection.getClassificationStatus()
+            );
             return;
         }
 
@@ -147,6 +156,18 @@ public class FeedbackService {
         );
 
         saveFeedbackIfDetected(user, classificationStatus, wasteType, guidanceCode, message);
+
+        log.info(
+                "[AI_CALLBACK_RESULT_SAVED] clientId={}, userId={}, status={}, wasteType={}, guidanceCode={}, guideVideoUrlPresent={}, earnedExp={}, level={}",
+                dto.getClientId(),
+                user.getId(),
+                classificationStatus,
+                wasteType,
+                guidanceCode,
+                StringUtils.hasText(guideVideoUrl),
+                earnedExp,
+                level
+        );
     }
 
     private void syncCharacterWithLevel(UserCharacter userCharacter) {
