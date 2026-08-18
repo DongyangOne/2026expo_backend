@@ -13,6 +13,7 @@ import one._026expo_backend.feedback.dto.request.AiFeedbackRequestDto;
 import one._026expo_backend.feedback.dto.response.FeedbackListResponseDto;
 import one._026expo_backend.feedback.enums.DetectionProcessStatus;
 import one._026expo_backend.feedback.enums.DetectionStatus;
+import one._026expo_backend.feedback.enums.GuidanceCode;
 import one._026expo_backend.feedback.enums.WasteClassificationStatus;
 import one._026expo_backend.feedback.enums.WasteType;
 import one._026expo_backend.feedback.repository.AiDetectionRepository;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecyclingLogInfo;
@@ -260,7 +262,8 @@ public class FeedbackService {
         String guidanceCode = dto.getGuidance() == null ? null
                 : dto.getGuidance().stream()
                 .map(AiFeedbackRequestDto.GuidanceDto::getCode)
-                .filter(StringUtils::hasText)
+                .filter(Objects::nonNull)
+                .map(GuidanceCode::name)
                 .findFirst()
                 .orElse(null);
 
