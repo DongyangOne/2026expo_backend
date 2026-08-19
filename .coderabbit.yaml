@@ -1,0 +1,417 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "ko-KR"
+
+early_access: false
+
+reviews:
+  profile: "assertive"
+
+  high_level_summary: true
+  request_changes_workflow: true
+  review_status: true
+  poem: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_instructions:
+
+    # ==================================================
+    # 전체 Java 코드 - 2026 ONE BACKEND CODING CONVENTION
+    # ==================================================
+
+    - path: "src/main/java/one/_026expo_backend/**/*.java"
+      instructions: |
+        다음 2026 ONE BACKEND CODING CONVENTION을 프로젝트의 기본 리뷰 기준으로 사용한다.
+
+        [공통 원칙]
+
+        - 성능 최적화보다 코드의 가독성과 유지보수성을 우선한다.
+        - 기존 코드 스타일과 새로운 컨벤션이 충돌하는 경우 기존 프로젝트의 일관성을 우선한다.
+        - 단일 책임 원칙(SRP)을 따른다.
+        - 실제 버그, 보안 문제, 데이터 무결성 문제를 스타일 문제보다 우선적으로 지적한다.
+        - 단순한 스타일 차이는 과도하게 지적하지 않는다.
+        - 프로젝트에 명시되지 않은 새로운 규칙을 임의로 만들어 강제하지 않는다.
+
+
+        [프로젝트 구조]
+
+        도메인별 책임을 명확하게 분리한다.
+
+        controller:
+        - HTTP 요청/응답 처리
+        - DTO 변환
+        - 인증/인가 위임
+
+        service:
+        - 비즈니스 로직
+        - 트랜잭션 경계
+
+        repository:
+        - JPA 등 영속성 처리
+
+        domain:
+        - Entity 및 도메인 모델
+        - 비즈니스 규칙
+
+        dto:
+        - Request / Response DTO
+
+        enums:
+        - 도메인 관련 Enum
+
+
+        [패키지명]
+
+        - 패키지명은 소문자를 사용한다.
+        - underscore를 사용하지 않는다.
+        - 의미 기반의 패키지명을 사용한다.
+
+
+        [클래스 및 메서드]
+
+        - 클래스명은 PascalCase를 사용한다.
+        - 메서드명은 camelCase를 사용한다.
+        - 변수명은 camelCase를 사용한다.
+        - 축약형 변수명을 지양한다.
+        - 상수는 UPPER_SNAKE_CASE를 사용한다.
+        - public 메서드를 private 메서드보다 위에 배치한다.
+        - 비슷한 기능의 메서드는 가까운 위치에 배치한다.
+        - 하나의 메서드가 지나치게 많은 책임을 담당하지 않는지 확인한다.
+
+
+        [메서드 네이밍]
+
+        다음 네이밍을 우선한다.
+
+        생성:
+        - save
+
+        수정:
+        - update
+        - update + Column
+
+        하드 삭제:
+        - delete
+
+        소프트 삭제:
+        - softDelete
+
+        단건 조회:
+        - findOne
+
+        조건이 있는 단건 조회:
+        - findOneBy...
+
+        다건 조회:
+        - findAll
+
+        호출자 또는 조건을 구분해야 하는 다건 조회:
+        - findAllBy...
+
+
+        [Controller / Service Entity 노출]
+
+        - Controller와 Service의 public 메서드에서 Entity를 직접 외부에 노출하지 않는다.
+        - API Request / Response에는 DTO를 사용한다.
+
+
+        [의존성 주입]
+
+        - 생성자 주입을 사용한다.
+        - Lombok의 @RequiredArgsConstructor 사용을 선호한다.
+        - 필드 주입(@Autowired 등)을 사용하지 않는다.
+
+
+        [Lombok]
+
+        허용 및 권장:
+        - @Getter
+        - @RequiredArgsConstructor
+        - @Builder
+        - @Slf4j
+
+        주의:
+        - @Data를 Entity나 DTO에 무분별하게 사용하지 않는다.
+        - Entity의 Setter 사용을 최소화한다.
+
+
+        [주석]
+
+        - "무엇을 했다"보다 "왜 이렇게 했다"를 설명한다.
+        - 코드만 봐도 알 수 있는 단순한 내용은 주석으로 작성하지 않는다.
+        - 외부 공개 메서드 또는 복잡한 로직에는 필요한 경우 Javadoc을 사용한다.
+
+
+        [Controller]
+
+        - Controller는 HTTP 요청/응답 처리에 집중한다.
+        - 비즈니스 로직은 Service로 위임한다.
+        - Controller에서 직접 Repository를 호출하지 않는다.
+        - Entity를 직접 Response로 반환하지 않는다.
+        - Request / Response DTO를 사용한다.
+        - 인증/인가 처리는 적절한 Security 계층 또는 공통 설정에 위임한다.
+
+
+        [HTTP Method]
+
+        다음 기준을 따른다.
+
+        GET:
+        - 조회
+
+        POST:
+        - 생성
+        - 이벤트 트리거
+
+        PUT:
+        - 전체 수정
+
+        PATCH:
+        - 부분 수정
+
+        DELETE:
+        - 삭제
+
+
+        [RESTful API]
+
+        - URL은 RESTful하게 명사를 사용한다.
+        - URL에 동사를 사용하지 않는다.
+
+        잘못된 예:
+        POST /api/v1/food/save
+
+        올바른 예:
+        POST /api/v1/food
+
+
+        [PathVariable]
+
+        - id처럼 의미가 불분명한 이름보다 리소스를 명확하게 나타내는 이름을 사용한다.
+
+        예:
+        - userId
+        - foodId
+        - questionId
+
+
+        [Query Parameter]
+
+        - 단순 값은 @RequestParam을 사용한다.
+        - 검색, 페이징 등 복잡한 Query Parameter는 Query DTO로 묶는다.
+        - Query DTO에는 타입과 Optional 여부가 명확하게 정의되어 있는지 확인한다.
+
+
+        [Request DTO]
+
+        - Request DTO와 Response DTO를 명확하게 구분한다.
+        - 필요한 경우 toEntity() 또는 toCommand() 등의 변환 메서드를 사용할 수 있다.
+        - 사용자 입력 검증이 필요한 경우 Bean Validation을 사용한다.
+        - @NotNull, @NotBlank, @Size, @Email 등을 적절하게 사용한다.
+
+
+        [Response DTO]
+
+        - Response DTO는 Entity / Domain에서 from() 또는 of()와 같은 정적 팩토리 메서드로 생성하는 방식을 우선한다.
+        - Entity 내부 구현이나 민감한 데이터를 불필요하게 노출하지 않는다.
+
+
+        [Service]
+
+        - Service는 비즈니스 로직의 중심이다.
+        - 하나의 메서드는 하나의 유스케이스에 집중한다.
+        - Controller에 비즈니스 로직을 작성하지 않는다.
+        - 트랜잭션 경계는 Service 계층에서 관리한다.
+        - 조회 전용 로직은 가능한 경우 readOnly = true를 사용한다.
+        - 데이터 변경 메서드에는 필요한 경우 @Transactional을 적용한다.
+
+
+        [Repository]
+
+        - Repository는 영속성 처리에 집중한다.
+        - 비즈니스 로직을 Repository에 작성하지 않는다.
+        - 단순한 정적 쿼리는 Spring Data JPA 메서드 또는 @Query를 우선한다.
+        - 복잡한 동적 조회에는 QueryDSL 사용을 고려한다.
+        - 불필요한 DB 조회가 없는지 확인한다.
+        - N+1 문제가 발생할 가능성이 있는지 확인한다.
+
+
+        [Entity / Domain]
+
+        - 비즈니스 규칙은 가능한 한 Domain에 포함한다.
+        - Entity Setter 사용을 지양한다.
+        - 상태 변경에는 의미 있는 도메인 메서드를 사용하는 것을 우선한다.
+
+        예:
+        - changePassword()
+        - updateProfile()
+        - activate()
+
+        - Entity에 @Data를 무분별하게 사용하지 않는다.
+        - Entity를 API Response로 직접 반환하지 않는다.
+
+
+        [DB Mapping]
+
+        - Java 필드명은 camelCase를 사용한다.
+        - DB 컬럼명은 snake_case를 사용한다.
+        - 필요한 경우 @Table(name = "...")을 명시한다.
+        - 필요한 경우 @Column(name = "...")을 명시한다.
+        - 컬럼 타입, 길이, nullable 여부 등 DB 제약조건을 명확하게 표현한다.
+
+
+        [Enum]
+
+        - Enum은 @Enumerated(EnumType.STRING)을 사용한다.
+        - ORDINAL 방식 사용을 지양한다.
+
+
+        [예외 처리]
+
+        - 프로젝트의 BusinessException 및 ErrorCode 체계를 일관되게 사용한다.
+        - 비즈니스 예외를 적절한 커스텀 예외 또는 프로젝트 공통 예외 체계로 처리한다.
+        - Controller에서 try-catch를 남발하지 않는다.
+        - 전역 예외 처리는 @RestControllerAdvice와 @ExceptionHandler를 사용하는 구조를 우선한다.
+        - 공통 에러 응답 형식을 일관되게 유지한다.
+
+        에러 응답에 포함될 수 있는 항목:
+        - code
+        - message
+        - status
+        - timestamp
+        - path
+
+
+        [Validation]
+
+        - 사용자 입력값에 필요한 검증이 존재하는지 확인한다.
+        - Request DTO에 적절한 Bean Validation이 적용되어 있는지 확인한다.
+        - Controller에서 필요한 DTO에 @Valid가 적용되어 있는지 확인한다.
+
+
+        [중요한 리뷰 우선순위]
+
+        다음 순서로 문제를 판단한다.
+
+        1. 보안 취약점
+        2. 실제 버그
+        3. 데이터 무결성 문제
+        4. 인증/인가 문제
+        5. 잘못된 비즈니스 로직
+        6. 트랜잭션 문제
+        7. 성능 문제
+        8. 프로젝트 Coding Convention 위반
+        9. 단순한 스타일 문제
+
+        단순히 본인의 선호와 프로젝트 컨벤션이 다른 경우에는 문제로 지적하지 않는다.
+
+        프로젝트에 존재하지 않는 새로운 아키텍처나 패턴을 임의로 강제하지 않는다.
+
+        기존 코드와 일관된 구현이 필요한 경우 기존 코드를 기준으로 판단한다.
+
+
+    # ==================================================
+    # Request DTO
+    # ==================================================
+
+    - path: "src/main/java/one/_026expo_backend/**/dto/request/**/*.java"
+      instructions: |
+        Request DTO에 대한 추가 리뷰 기준이다.
+
+        - 사용자 입력값에 필요한 Bean Validation이 존재하는지 확인한다.
+        - @NotNull, @NotBlank, @Size, @Email 등의 사용이 필요한지 검토한다.
+        - DTO가 Entity를 불필요하게 노출하지 않는지 확인한다.
+        - 필요한 경우 toEntity() 또는 toCommand() 등의 변환 메서드 사용을 고려한다.
+        - Query Parameter용 DTO와 Body용 Request DTO를 혼용하지 않는다.
+
+
+    # ==================================================
+    # Response DTO
+    # ==================================================
+
+    - path: "src/main/java/one/_026expo_backend/**/dto/response/**/*.java"
+      instructions: |
+        Response DTO에 대한 추가 리뷰 기준이다.
+
+        - Entity를 직접 반환하지 않고 DTO를 사용하는지 확인한다.
+        - from() 또는 of() 정적 팩토리 메서드 사용을 우선한다.
+        - 비밀번호, 토큰, 내부 식별자 등 민감하거나 불필요한 정보가 노출되지 않는지 확인한다.
+        - API 사용자가 실제로 필요한 데이터만 반환하는지 확인한다.
+
+
+    # ==================================================
+    # Controller 추가 규칙
+    # ==================================================
+
+    - path: "src/main/java/one/_026expo_backend/**/controller/**/*.java"
+      instructions: |
+        Controller에 대한 추가 리뷰 기준이다.
+
+        - Controller가 Service에 비즈니스 로직을 위임하는지 확인한다.
+        - Controller에서 Repository를 직접 호출하지 않는지 확인한다.
+        - Entity를 Response로 직접 반환하지 않는지 확인한다.
+        - 필요한 Request DTO에 @Valid가 적용되어 있는지 확인한다.
+        - URL이 RESTful한 명사 형태인지 확인한다.
+        - HTTP Method가 API의 의도와 적절하게 일치하는지 확인한다.
+        - Controller 메서드가 지나치게 복잡하지 않은지 확인한다.
+
+
+    # ==================================================
+    # Service 추가 규칙
+    # ==================================================
+
+    - path: "src/main/java/one/_026expo_backend/**/service/**/*.java"
+      instructions: |
+        Service에 대한 추가 리뷰 기준이다.
+
+        - 비즈니스 로직이 Service에 위치하는지 확인한다.
+        - 하나의 public 메서드가 하나의 유스케이스를 담당하는지 확인한다.
+        - 트랜잭션 경계가 적절한지 확인한다.
+        - 조회 전용 로직에 readOnly = true 사용이 적절한지 확인한다.
+        - Entity Setter를 통한 무분별한 상태 변경이 없는지 확인한다.
+        - 필요한 경우 Entity의 도메인 메서드를 사용하는지 확인한다.
+
+
+    # ==================================================
+    # Repository 추가 규칙
+    # ==================================================
+
+    - path: "src/main/java/one/_026expo_backend/**/repository/**/*.java"
+      instructions: |
+        Repository에 대한 추가 리뷰 기준이다.
+
+        - Repository에 비즈니스 로직이 들어가지 않았는지 확인한다.
+        - 단순 조회에 과도하게 복잡한 Query를 작성하지 않았는지 확인한다.
+        - N+1 문제가 발생할 가능성을 확인한다.
+        - 불필요한 데이터를 조회하지 않는지 확인한다.
+
+
+    # ==================================================
+    # Domain 추가 규칙
+    # ==================================================
+
+    - path: "src/main/java/one/_026expo_backend/**/domain/**/*.java"
+      instructions: |
+        Domain / Entity에 대한 추가 리뷰 기준이다.
+
+        - Entity Setter 사용을 지양한다.
+        - 상태 변경이 필요한 경우 의미 있는 도메인 메서드를 사용하는지 확인한다.
+        - Entity에 @Data를 사용하지 않는지 확인한다.
+        - Enum이 @Enumerated(EnumType.STRING)으로 매핑되는지 확인한다.
+        - DB 컬럼과 Java 필드의 네이밍 규칙이 일관적인지 확인한다.
+        - Entity가 API 계층에 직접 노출되지 않는지 확인한다.
+
+
+    # ==================================================
+    # Global
+    # ==================================================
+
+    - path: "src/main/java/one/_026expo_backend/global/**/*.java"
+      instructions: |
+        Global 영역에 대한 추가 리뷰 기준이다.
+
+        - 여러 도메인에서 공통으로 사용되는 기능만 global에 위치하는지 확인한다.
+        - 특정 도메인에만 필요한 비즈니스 로직이 global에 들어가지 않았는지 확인한다.
