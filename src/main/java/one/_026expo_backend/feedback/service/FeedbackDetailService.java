@@ -171,7 +171,7 @@ public class FeedbackDetailService {
     /**
      * AI 안내 결과에 맞는 영상 파일명 결정
      */
-    private String resolveVideoFileName(WasteType wasteType, String guidanceCode) {
+    static String resolveVideoFileName(WasteType wasteType, String guidanceCode) {
         if (!StringUtils.hasText(guidanceCode)) {
             return null;
         }
@@ -186,7 +186,7 @@ public class FeedbackDetailService {
             case "CAN:COMPRESS" -> "feedback_can_dent.mp4";
 
             // 종이 무게 이상
-            case "PAPER:EMPTY_CONTENTS" -> "feedback_paper_weight.mp4";
+            case "PAPER:WEIGHT_ANOMALY" -> "feedback_paper_weight.mp4";
 
             // 플라스틱·페트 내용물/무게 이상
             case "PLASTIC:EMPTY_CONTENTS" -> "feedback_plastic_waterOff.mp4";
@@ -194,12 +194,12 @@ public class FeedbackDetailService {
             // 플라스틱·페트 라벨 미제거
             case "PLASTIC:REMOVE_LABEL" -> "feedback_plastic_vinlyOff.mp4";
 
-            case "PLASTIC:REMOVE_FOREIGN_MATERIAL" -> "feedback_plastic_foreign.mp4";
+            case "PLASTIC:FOREIGN_MATERIAL" -> "feedback_plastic_foreign.mp4";
 
             // 페트 미압착
             case "PLASTIC:COMPRESS" -> "feedback_plastic_dent.mp4";
 
-            case "VINYL:EMPTY_CONTENTS" -> "feedback_vinly_weight.mp4";
+            case "VINYL:WEIGHT_ANOMALY" -> "feedback_vinly_weight.mp4";
 
             default -> null;
         };

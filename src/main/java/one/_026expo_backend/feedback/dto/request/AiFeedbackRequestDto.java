@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import one._026expo_backend.feedback.enums.DetectionStatus;
+import one._026expo_backend.feedback.enums.GuidanceCode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -109,8 +110,8 @@ public class AiFeedbackRequestDto {
     public static class GuidanceDto {
 
         @Schema(description = "재처리 안내 코드", example = "REMOVE_LABEL",
-                    allowableValues = {"EMPTY_CONTENTS", "REMOVE_LABEL", "COMPRESS", "REMOVE_FOREIGN_MATERIAL"})
-            private String code;
+                    allowableValues = {"EMPTY_CONTENTS", "WEIGHT_ANOMALY", "FOREIGN_MATERIAL", "REMOVE_LABEL", "COMPRESS"})
+            private GuidanceCode code;
 
         @Schema(description = "사용자에게 표시할 재처리 안내 문구", example = "라벨을 제거한 후 다시 넣어 주세요.")
             private String message;
