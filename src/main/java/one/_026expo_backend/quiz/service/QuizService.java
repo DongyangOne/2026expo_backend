@@ -5,7 +5,10 @@ import io.minio.MinioClient;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import one._026expo_backend.character.domain.Character;
+import one._026expo_backend.quiz.dto.redis.RetryQuizSessionDto;
+import one._026expo_backend.quiz.dto.response.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import one._026expo_backend.character.domain.UserCharacter;
@@ -15,14 +18,11 @@ import one._026expo_backend.character.repository.UserCharacterRepository;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.dto.request.StartQuizRequestDto;
-import one._026expo_backend.quiz.dto.response.QuizResultResponseDto;
-import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
 import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.quiz.domain.Quiz;
 import one._026expo_backend.quiz.domain.QuizRecord;
 import one._026expo_backend.quiz.dto.redis.QuizListSessionDto;
 import one._026expo_backend.quiz.dto.request.NextQuizRequestDto;
-import one._026expo_backend.quiz.dto.response.NextQuizResponseDto;
 import one._026expo_backend.quiz.enums.QuizResultMessage;
 import one._026expo_backend.quiz.repository.QuizRecordRepository;
 import one._026expo_backend.quiz.repository.QuizRepository;
@@ -336,6 +336,146 @@ public class QuizService {
                 .orElse(userCharacter.getCharacter());
 
         userCharacter.changeCharacter(character);
+    }
+
+    /**
+     * 퀴즈 다시풀기 시작 로직
+     *
+     * 원본 sessionId의 quiz_records에서 틀린 문제만 가져온 뒤,
+     * 기존 퀴즈 진행 방식과 동일하게 Redis에 다시풀기 문제 목록을 저장합니다.
+     */
+    public RetryQuizStartResponseDto startRetryQuiz(Long userId, String originSessionId) {
+        validateSessionId(originSessionId);
+
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // 요청받은 sessionId가 로그인한 유저가 마지막으로 푼 퀴즈 세션인지 먼저 검증합니다.
+        String latestSessionId = quizRecordRepository.findLatestSessionIdByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
+
+        if (!latestSessionId.equals(originSessionId)) {
+            throw new BusinessException(ErrorCode.NOT_LATEST_QUIZ_SESSION);
+        }
+
+        List<Long> wrongQuizIds = quizRecordRepository
+                .findByUsersAndSessionIdAndIsCorrectOrderByAnsweredAtAscQuizRecordIdAsc(
+                        user,
+                        originSessionId,
+                        UseYnEnum.N
+                )
+                .stream()
+                .map(record -> record.getQuiz().getQuizId())
+                .toList();
+
+        if (wrongQuizIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.QUIZ_NOT_FOUND);
+        }
+
+        Quiz firstQuiz = quizRepository.findById(wrongQuizIds.get(0))
+                .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
+
+        String retrySessionId = quizSessionRedisRepository.saveRetry(userId, wrongQuizIds);
+
+        return RetryQuizStartResponseDto.of(
+                retrySessionId,
+                wrongQuizIds.size(),
+                firstQuiz
+        );
+    }
+
+    /**
+     * 다시풀기 정답 제출 및 다음 문제 조회 로직
+     *
+     * 다시풀기 문제 목록과 진행 순서는 Redis 기준으로 검증하고,
+     * 제출 기록은 retrySessionId로 DB에 저장합니다.
+     */
+    @Transactional
+    public NextQuizResponseDto moveOnRetryQuiz(Long userId, String retrySessionId, NextQuizRequestDto requestDto) {
+        requestDto.validate();
+        validateSessionId(retrySessionId);
+
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        RetryQuizSessionDto session = quizSessionRedisRepository.findRetry(userId, retrySessionId);
+        List<Long> quizIds = session.getQuizIds();
+        int nextIndex = session.getNextIndex();
+
+        int currentIndex = nextIndex - 1;
+
+        if (currentIndex < 0 || currentIndex >= quizIds.size()) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
+        }
+
+        Long expectedQuizId = quizIds.get(currentIndex);
+
+        if (!expectedQuizId.equals(requestDto.getCurrentQuizId())) {
+            throw new BusinessException(ErrorCode.INVALID_QUIZ_SEQUENCE);
+        }
+
+        Quiz nowQuiz = quizRepository.findById(expectedQuizId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
+
+        boolean isCorrect = nowQuiz.getAnswer().equals(requestDto.getAnswer());
+
+        // 다시풀기는 DB에 풀이 기록을 저장하지 않고, 결과 계산용 정답 개수만 Redis에 저장합니다.
+        int correctCount = session.getCorrectCount() + (isCorrect ? 1 : 0);
+
+        int updatedNextIndex = nextIndex + 1;
+        boolean finished = updatedNextIndex > quizIds.size();
+
+        if (finished) {
+            quizSessionRedisRepository.completeRetry(userId, session, quizIds.size(), correctCount);
+            return NextQuizResponseDto.of(nowQuiz, null, isCorrect);
+        }
+
+        Long nextQuizId = quizIds.get(nextIndex);
+        Quiz nextQuiz = quizRepository.findById(nextQuizId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
+
+        quizSessionRedisRepository.updateRetryProgress(userId, session, updatedNextIndex, correctCount);
+
+        return NextQuizResponseDto.of(nowQuiz, nextQuiz, isCorrect);
+    }
+
+    /**
+     * 다시풀기 결과 조회 로직
+     *
+     * Redis 세션 완료 여부와 DB 제출 기록 개수를 검증한 뒤 결과만 반환합니다.
+     * 다시풀기는 경험치를 지급하지 않습니다.
+     */
+    @Transactional
+    public RetryQuizResultResponseDto resultRetryQuiz(Long userId, String retrySessionId) {
+        validateSessionId(retrySessionId);
+
+        if (!userRepository.existsById(userId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        RetryQuizSessionDto session = quizSessionRedisRepository.findRetry(userId, retrySessionId);
+
+        if (!Boolean.TRUE.equals(session.getFinished())) {
+            throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
+        }
+
+        int totalCount = session.getQuizIds().size();
+        // 다시풀기는 DB에 기록하지 않으므로 Redis에 저장한 정답 개수로 결과를 계산합니다.
+        int correctCount = session.getCorrectCount();
+
+        String resultMessage = QuizResultMessage.pick(correctCount, totalCount);
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        quizSessionRedisRepository.deleteRetry(userId);
+                    }
+                }
+        );
+
+        return RetryQuizResultResponseDto.of(totalCount, correctCount, resultMessage);
     }
 
     private void validateSessionId(String sessionId) {

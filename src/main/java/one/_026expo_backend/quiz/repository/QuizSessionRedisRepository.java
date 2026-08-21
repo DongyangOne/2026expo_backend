@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.dto.redis.QuizListSessionDto;
+import one._026expo_backend.quiz.dto.redis.RetryQuizSessionDto;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -27,6 +28,7 @@ public class QuizSessionRedisRepository {
 
     //quiz 세션 데이터용 key정의
     private static final String KEY_PREFIX = "quiz:session:";
+    private static final String RETRY_KEY_PREFIX = "quiz:retry-session:";
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -153,6 +155,105 @@ public class QuizSessionRedisRepository {
     }
 
     /**
+     * 다시풀기 퀴즈 세션 생성
+     *
+     * 원본 quiz_records에서 가져온 오답 quiz id 목록을 Redis에 저장합니다.
+     * 일반 퀴즈 세션과 충돌하지 않도록 별도 key prefix를 사용합니다.
+     */
+    public String saveRetry(Long userId, List<Long> quizIds) {
+        String sessionId = UUID.randomUUID().toString();
+
+        RetryQuizSessionDto session = new RetryQuizSessionDto(
+                sessionId,
+                quizIds,
+                1,
+                false,
+                0
+        );
+
+        try {
+            String value = objectMapper.writeValueAsString(session);
+            redisTemplate.opsForValue().set(retryKey(userId), value, QUIZ_SESSION_TTL);
+
+            return sessionId;
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_SAVE_FAILED);
+        }
+    }
+
+    /**
+     * 다시풀기 퀴즈 세션 조회
+     */
+    public RetryQuizSessionDto findRetry(Long userId, String sessionId) {
+        String value = redisTemplate.opsForValue().get(retryKey(userId));
+
+        if (value == null) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_NOT_FOUND);
+        }
+
+        try {
+            RetryQuizSessionDto session = objectMapper.readValue(value, RetryQuizSessionDto.class);
+
+            if (!session.getSessionId().equals(sessionId)) {
+                throw new BusinessException(ErrorCode.INVALID_QUIZ_SESSION);
+            }
+
+            return session;
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
+        }
+    }
+
+    /**
+     * 다시풀기 진행 상태 갱신
+     *
+     * 다시풀기는 DB에 기록하지 않으므로 정답 개수를 Redis에 임시 저장합니다.
+     */
+    public void updateRetryProgress(Long userId, RetryQuizSessionDto session, Integer nextIndex, Integer correctCount) {
+        RetryQuizSessionDto updatedSession = new RetryQuizSessionDto(
+                session.getSessionId(),
+                session.getQuizIds(),
+                nextIndex,
+                false,
+                correctCount
+        );
+
+        try {
+            String value = objectMapper.writeValueAsString(updatedSession);
+            redisTemplate.opsForValue().set(retryKey(userId), value, QUIZ_SESSION_TTL);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_UPDATE_FAILED);
+        }
+    }
+
+    /**
+     * 다시풀기 완료 처리
+     */
+    public void completeRetry(Long userId, RetryQuizSessionDto session, Integer nextIndex, Integer correctCount) {
+        RetryQuizSessionDto completedSession = new RetryQuizSessionDto(
+                session.getSessionId(),
+                session.getQuizIds(),
+                nextIndex,
+                true,
+                correctCount
+        );
+
+        try {
+            String value = objectMapper.writeValueAsString(completedSession);
+            redisTemplate.opsForValue().set(retryKey(userId), value, QUIZ_SESSION_TTL);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
+        }
+    }
+
+    /**
+     * 다시풀기 세션 삭제
+     */
+    public void deleteRetry(Long userId) {
+        redisTemplate.delete(retryKey(userId));
+    }
+
+    /**
      * 퀴즈 결과 정산 중복 요청 방지용 락 (5초간 유지)
      */
     public boolean lockReward(String sessionId) {
@@ -162,6 +263,12 @@ public class QuizSessionRedisRepository {
         );
     }
 
+    /**
+     * 다시풀기 Redis key 생성 메서드
+     */
+    private String retryKey(Long userId) {
+        return RETRY_KEY_PREFIX + userId;
+    }
 
     /**
      * Redis key 생성 메서드
