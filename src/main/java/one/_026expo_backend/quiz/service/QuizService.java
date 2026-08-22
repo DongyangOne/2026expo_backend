@@ -219,7 +219,6 @@ public class QuizService {
         return QuizProfileInfo.of(correctSolvedCount, totalSolvedCount);
 
     }
-
     /**
      * 퀴즈 종료 및 결과 정산 로직
      *
@@ -239,14 +238,14 @@ public class QuizService {
         //세션 정보 가져오기
         QuizListSessionDto session = quizSessionRedisRepository.find(userId, sessionId);
 
-        //중복 요청 시 경험치 중복 추가 방지
-        if (!quizSessionRedisRepository.lockReward(sessionId)) {
-            throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
-        }
-
         //해당 퀴즈가 끝나지 않은 상태일 시 예외처리
         if (!Boolean.TRUE.equals(session.getFinished())) {
             throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
+        }
+
+        //중복 요청 시 경험치 중복 추가 방지
+        if (!quizSessionRedisRepository.lockReward(sessionId)) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
         }
 
         //퀴즈 문제 개수와 기록 개수를 비교하여 다를 경우 예외처리
@@ -402,6 +401,11 @@ public class QuizService {
         }
 
         RetryQuizSessionDto session = quizSessionRedisRepository.findRetry(userId, retrySessionId);
+
+        if (Boolean.TRUE.equals(session.getFinished())) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
+        }
+
         List<Long> quizIds = session.getQuizIds();
         int nextIndex = session.getNextIndex();
 
@@ -441,7 +445,6 @@ public class QuizService {
 
         return NextQuizResponseDto.of(nowQuiz, nextQuiz, isCorrect);
     }
-
     /**
      * 다시풀기 결과 조회 로직
      *
@@ -457,13 +460,13 @@ public class QuizService {
 
         RetryQuizSessionDto session = quizSessionRedisRepository.findRetry(userId, retrySessionId);
 
+        if (!Boolean.TRUE.equals(session.getFinished())) {
+            throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
+        }
+
         // 다시풀기 결과 정산 API 중복 호출로 경험치가 중복 지급되는 것을 방지합니다.
         if (!quizSessionRedisRepository.lockReward(retrySessionId)) {
             throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
-        }
-
-        if (!Boolean.TRUE.equals(session.getFinished())) {
-            throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
         }
 
         int totalCount = session.getQuizIds().size();

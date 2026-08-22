@@ -212,6 +212,8 @@ public class QuizSessionRedisRepository {
      * 다시풀기는 DB에 기록하지 않으므로 정답 개수를 Redis에 임시 저장합니다.
      */
     public void updateRetryProgress(Long userId, RetryQuizSessionDto session, Integer nextIndex, Integer correctCount) {
+        validateRetrySessionState(userId, session);
+
         RetryQuizSessionDto updatedSession = new RetryQuizSessionDto(
                 session.getSessionId(),
                 session.getOriginSessionId(),
@@ -233,6 +235,8 @@ public class QuizSessionRedisRepository {
      * 다시풀기 완료 처리
      */
     public void completeRetry(Long userId, RetryQuizSessionDto session, Integer nextIndex, Integer correctCount) {
+        validateRetrySessionState(userId, session);
+
         RetryQuizSessionDto completedSession = new RetryQuizSessionDto(
                 session.getSessionId(),
                 session.getOriginSessionId(),
@@ -247,6 +251,26 @@ public class QuizSessionRedisRepository {
             redisTemplate.opsForValue().set(retryKey(userId), value, QUIZ_SESSION_TTL);
         } catch (JsonProcessingException e) {
             throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
+        }
+    }
+
+    /**
+     * Redis에 저장된 기존 다시풀기 세션 상태 검증
+     */
+    private void validateRetrySessionState(Long userId, RetryQuizSessionDto expectedSession) {
+        String existingValue = redisTemplate.opsForValue().get(retryKey(userId));
+
+        if (existingValue != null) {
+            try {
+                RetryQuizSessionDto existingSession = objectMapper.readValue(existingValue, RetryQuizSessionDto.class);
+
+                if (!existingSession.getSessionId().equals(expectedSession.getSessionId()) ||
+                        !existingSession.getNextIndex().equals(expectedSession.getNextIndex())) {
+                    throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
+                }
+            } catch (JsonProcessingException e) {
+                // 파싱 실패 시 무시하고 진행
+            }
         }
     }
 
