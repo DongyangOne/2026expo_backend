@@ -257,20 +257,28 @@ public class QuizSessionRedisRepository {
     /**
      * Redis에 저장된 기존 다시풀기 세션 상태 검증
      */
+    /**
+     * Redis에 저장된 기존 다시풀기 세션 상태 검증
+     */
     private void validateRetrySessionState(Long userId, RetryQuizSessionDto expectedSession) {
         String existingValue = redisTemplate.opsForValue().get(retryKey(userId));
 
-        if (existingValue != null) {
-            try {
-                RetryQuizSessionDto existingSession = objectMapper.readValue(existingValue, RetryQuizSessionDto.class);
+        // 값이 없으면(만료 등) 예외처리
+        if (existingValue == null) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_NOT_FOUND);
+        }
 
-                if (!existingSession.getSessionId().equals(expectedSession.getSessionId()) ||
-                        !existingSession.getNextIndex().equals(expectedSession.getNextIndex())) {
-                    throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
-                }
-            } catch (JsonProcessingException e) {
-                // 파싱 실패 시 무시하고 진행
+        try {
+            RetryQuizSessionDto existingSession = objectMapper.readValue(existingValue, RetryQuizSessionDto.class);
+
+            // 기존 세션 ID나 인덱스가 다르면 상태 충돌 에러
+            if (!existingSession.getSessionId().equals(expectedSession.getSessionId()) ||
+                    !existingSession.getNextIndex().equals(expectedSession.getNextIndex())) {
+                throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
             }
+        } catch (JsonProcessingException e) {
+            // 파싱 실패 시 예외처리
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
         }
     }
 
