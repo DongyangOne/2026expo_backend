@@ -48,6 +48,12 @@ public class QuizRecord {
     @Column(name = "earned_point", nullable = false)
     private Integer earnedPoint;
 
+    // 원본 퀴즈 세션이 다시풀기에 사용되었는지 표시합니다.
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "retry_used", nullable = false, columnDefinition = "ENUM('Y','N')")
+    private UseYnEnum retryUsed = UseYnEnum.N;
+
     @Column(name = "answered_at", nullable = false)
     private LocalDateTime answeredAt;
 }

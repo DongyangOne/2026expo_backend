@@ -6,6 +6,7 @@ import one._026expo_backend.quiz.domain.QuizRecord;
 import one._026expo_backend.user.domain.Users;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -58,4 +59,21 @@ public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
     limit 1
     """, nativeQuery = true)
     Optional<String> findLatestSessionIdByUserId(@Param("userId") Long userId);
+
+    // 해당 원본 세션이 이미 다시풀기에 사용되었는지 확인합니다.
+    boolean existsByUsersAndSessionIdAndRetryUsed(Users users, String sessionId, UseYnEnum retryUsed);
+
+    // 다시풀기 시작 시 원본 세션 기록 전체에 사용 완료 표시를 남깁니다.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+    update QuizRecord qr
+    set qr.retryUsed = :retryUsed
+    where qr.users = :user
+      and qr.sessionId = :sessionId
+    """)
+    int updateRetryUsedByUsersAndSessionId(
+            @Param("user") Users user,
+            @Param("sessionId") String sessionId,
+            @Param("retryUsed") UseYnEnum retryUsed
+    );
 }

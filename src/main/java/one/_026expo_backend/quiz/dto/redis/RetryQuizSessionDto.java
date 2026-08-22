@@ -13,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class RetryQuizSessionDto {
     private String sessionId;
+    private String originSessionId;
     private List<Long> quizIds;
     private Integer nextIndex;
     private Boolean finished;

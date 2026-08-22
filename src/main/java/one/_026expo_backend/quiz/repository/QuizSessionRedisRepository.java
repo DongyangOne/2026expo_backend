@@ -160,11 +160,13 @@ public class QuizSessionRedisRepository {
      * 원본 quiz_records에서 가져온 오답 quiz id 목록을 Redis에 저장합니다.
      * 일반 퀴즈 세션과 충돌하지 않도록 별도 key prefix를 사용합니다.
      */
-    public String saveRetry(Long userId, List<Long> quizIds) {
+    public String saveRetry(Long userId, String originSessionId, List<Long> quizIds) {
         String sessionId = UUID.randomUUID().toString();
 
+        // 다시풀기 결과 정산 시 원본 세션을 추적할 수 있게 originSessionId도 함께 저장합니다.
         RetryQuizSessionDto session = new RetryQuizSessionDto(
                 sessionId,
+                originSessionId,
                 quizIds,
                 1,
                 false,
@@ -212,6 +214,7 @@ public class QuizSessionRedisRepository {
     public void updateRetryProgress(Long userId, RetryQuizSessionDto session, Integer nextIndex, Integer correctCount) {
         RetryQuizSessionDto updatedSession = new RetryQuizSessionDto(
                 session.getSessionId(),
+                session.getOriginSessionId(),
                 session.getQuizIds(),
                 nextIndex,
                 false,
@@ -232,6 +235,7 @@ public class QuizSessionRedisRepository {
     public void completeRetry(Long userId, RetryQuizSessionDto session, Integer nextIndex, Integer correctCount) {
         RetryQuizSessionDto completedSession = new RetryQuizSessionDto(
                 session.getSessionId(),
+                session.getOriginSessionId(),
                 session.getQuizIds(),
                 nextIndex,
                 true,

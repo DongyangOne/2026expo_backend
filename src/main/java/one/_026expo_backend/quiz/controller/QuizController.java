@@ -97,7 +97,8 @@ public class QuizController {
      */
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FOUND,
             ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID,
-            ErrorCode.QUIZ_SESSION_SAVE_FAILED, ErrorCode.NOT_LATEST_QUIZ_SESSION})
+            ErrorCode.QUIZ_SESSION_SAVE_FAILED, ErrorCode.NOT_LATEST_QUIZ_SESSION,
+            ErrorCode.ALREADY_RETRIED_QUIZ_SESSION})
     @Operation(summary = "퀴즈 다시풀기 시작", description = "기존 퀴즈 세션에서 틀린 문제만 가져와 다시풀기 세션을 시작합니다.")
     @PostMapping("/sessions/{sessionId}/retry")
     public ResponseEntity<ApiResponse<RetryQuizStartResponseDto>> startRetryQuiz(
@@ -140,7 +141,7 @@ public class QuizController {
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FINISHED,
             ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED, ErrorCode.INVALID_QUIZ_SESSION,
             ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID})
-    @Operation(summary = "다시풀기 결과 조회", description = "완료된 다시풀기 세션의 결과를 조회합니다. 경험치는 지급하지 않습니다.")
+    @Operation(summary = "다시풀기 결과 조회", description = "완료된 다시풀기 세션의 결과를 조회하고 정답 1개당 1 경험치를 지급합니다.")
     @PostMapping("/retry-sessions/{sessionId}/result")
     public ResponseEntity<ApiResponse<RetryQuizResultResponseDto>> resultRetryQuiz(
             @AuthenticationPrincipal Long userId,

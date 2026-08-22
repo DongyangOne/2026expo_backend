@@ -47,6 +47,7 @@ import java.util.regex.Pattern;
 @Transactional(readOnly = true)
 public class QuizService {
     private static final int QUIZ_CORRECT_EXP = 2;
+    private static final int RETRY_QUIZ_CORRECT_EXP = 1;
     private static final int QUIZ_MAX_EXP = 20;
     private static final Pattern UUID_PATTERN =
             Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
@@ -344,6 +345,7 @@ public class QuizService {
      * 원본 sessionId의 quiz_records에서 틀린 문제만 가져온 뒤,
      * 기존 퀴즈 진행 방식과 동일하게 Redis에 다시풀기 문제 목록을 저장합니다.
      */
+    @Transactional
     public RetryQuizStartResponseDto startRetryQuiz(Long userId, String originSessionId) {
         validateSessionId(originSessionId);
 
@@ -356,6 +358,10 @@ public class QuizService {
 
         if (!latestSessionId.equals(originSessionId)) {
             throw new BusinessException(ErrorCode.NOT_LATEST_QUIZ_SESSION);
+        }
+
+        if (quizRecordRepository.existsByUsersAndSessionIdAndRetryUsed(user, originSessionId, UseYnEnum.Y)) {
+            throw new BusinessException(ErrorCode.ALREADY_RETRIED_QUIZ_SESSION);
         }
 
         List<Long> wrongQuizIds = quizRecordRepository
@@ -375,7 +381,10 @@ public class QuizService {
         Quiz firstQuiz = quizRepository.findById(wrongQuizIds.get(0))
                 .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
 
-        String retrySessionId = quizSessionRedisRepository.saveRetry(userId, wrongQuizIds);
+        // 다시풀기 세션 생성 전에 원본 세션에 사용 완료 표시를 남겨 중복 시작을 막습니다.
+        quizRecordRepository.updateRetryUsedByUsersAndSessionId(user, originSessionId, UseYnEnum.Y);
+
+        String retrySessionId = quizSessionRedisRepository.saveRetry(userId, originSessionId, wrongQuizIds);
 
         return RetryQuizStartResponseDto.of(
                 retrySessionId,
@@ -450,11 +459,15 @@ public class QuizService {
     public RetryQuizResultResponseDto resultRetryQuiz(Long userId, String retrySessionId) {
         validateSessionId(retrySessionId);
 
-        if (!userRepository.existsById(userId)) {
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        }
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         RetryQuizSessionDto session = quizSessionRedisRepository.findRetry(userId, retrySessionId);
+
+        // 다시풀기 결과 정산 API 중복 호출로 경험치가 중복 지급되는 것을 방지합니다.
+        if (!quizSessionRedisRepository.lockReward(retrySessionId)) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
+        }
 
         if (!Boolean.TRUE.equals(session.getFinished())) {
             throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
@@ -463,6 +476,22 @@ public class QuizService {
         int totalCount = session.getQuizIds().size();
         // 다시풀기는 DB에 기록하지 않으므로 Redis에 저장한 정답 개수로 결과를 계산합니다.
         int correctCount = session.getCorrectCount();
+
+        // 다시풀기는 정답 1개당 1 경험치를 지급합니다.
+        int earnedExp = correctCount * RETRY_QUIZ_CORRECT_EXP;
+
+        UserCharacter userCharacter = userCharacterRepository.findFirstByUser(user)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_CHARACTER_NOT_FOUND));
+
+        int beforeLevel = userCharacter.getCurrentLevel();
+        int beforeExp = userCharacter.getCurrentExp();
+
+        userCharacter.addExp(earnedExp);
+        syncCharacterWithLevel(userCharacter);
+
+        int currentMaxExp = LevelPolicy.getMaxExpForLevel(userCharacter.getCurrentLevel());
+
+        Character currentCharacter = userCharacter.getCharacter();
 
         String resultMessage = QuizResultMessage.pick(correctCount, totalCount);
 
@@ -475,7 +504,22 @@ public class QuizService {
                 }
         );
 
-        return RetryQuizResultResponseDto.of(totalCount, correctCount, resultMessage);
+        return RetryQuizResultResponseDto.of(
+                totalCount,
+                correctCount,
+                earnedExp,
+                resultMessage,
+                userCharacter.getUserCharacterId(),
+                currentCharacter.getCharacterId(),
+                currentCharacter.getCharacterName(),
+                getMinioImageUrl(currentCharacter.getImageUrl()),
+                currentCharacter.getEvolutionStage(),
+                beforeLevel,
+                beforeExp,
+                userCharacter.getCurrentLevel(),
+                userCharacter.getCurrentExp(),
+                currentMaxExp
+        );
     }
 
     private void validateSessionId(String sessionId) {
