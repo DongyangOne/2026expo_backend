@@ -60,20 +60,19 @@ public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
     """, nativeQuery = true)
     Optional<String> findLatestSessionIdByUserId(@Param("userId") Long userId);
 
-    // 해당 원본 세션이 이미 다시풀기에 사용되었는지 확인합니다.
-    boolean existsByUsersAndSessionIdAndRetryUsed(Users users, String sessionId, UseYnEnum retryUsed);
-
-    // 다시풀기 시작 시 원본 세션 기록 전체에 사용 완료 표시를 남깁니다.
+    // 원본 세션의 다시풀기 경험치를 아직 지급하지 않은 경우에만 지급 완료로 변경합니다.
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
     update QuizRecord qr
-    set qr.retryUsed = :retryUsed
+    set qr.retryRewardClaimed = :claimed
     where qr.users = :user
       and qr.sessionId = :sessionId
+      and qr.retryRewardClaimed = :unclaimed
     """)
-    int updateRetryUsedByUsersAndSessionId(
+    int markRetryRewardClaimedIfUnclaimed(
             @Param("user") Users user,
             @Param("sessionId") String sessionId,
-            @Param("retryUsed") UseYnEnum retryUsed
+            @Param("claimed") UseYnEnum claimed,
+            @Param("unclaimed") UseYnEnum unclaimed
     );
 }

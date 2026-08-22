@@ -360,10 +360,6 @@ public class QuizService {
             throw new BusinessException(ErrorCode.NOT_LATEST_QUIZ_SESSION);
         }
 
-        if (quizRecordRepository.existsByUsersAndSessionIdAndRetryUsed(user, originSessionId, UseYnEnum.Y)) {
-            throw new BusinessException(ErrorCode.ALREADY_RETRIED_QUIZ_SESSION);
-        }
-
         List<Long> wrongQuizIds = quizRecordRepository
                 .findByUsersAndSessionIdAndIsCorrectOrderByAnsweredAtAscQuizRecordIdAsc(
                         user,
@@ -380,9 +376,6 @@ public class QuizService {
 
         Quiz firstQuiz = quizRepository.findById(wrongQuizIds.get(0))
                 .orElseThrow(() -> new BusinessException(ErrorCode.QUIZ_NOT_FOUND));
-
-        // 다시풀기 세션 생성 전에 원본 세션에 사용 완료 표시를 남겨 중복 시작을 막습니다.
-        quizRecordRepository.updateRetryUsedByUsersAndSessionId(user, originSessionId, UseYnEnum.Y);
 
         String retrySessionId = quizSessionRedisRepository.saveRetry(userId, originSessionId, wrongQuizIds);
 
@@ -477,12 +470,18 @@ public class QuizService {
         // 다시풀기는 DB에 기록하지 않으므로 Redis에 저장한 정답 개수로 결과를 계산합니다.
         int correctCount = session.getCorrectCount();
 
-        // 다시풀기는 정답 1개당 1 경험치를 지급합니다.
-        int earnedExp = correctCount * RETRY_QUIZ_CORRECT_EXP;
+        // 원본 세션 기준으로 다시풀기 경험치는 최초 1회만 지급합니다.
+        int updatedCount = quizRecordRepository.markRetryRewardClaimedIfUnclaimed(
+                user,
+                session.getOriginSessionId(),
+                UseYnEnum.Y,
+                UseYnEnum.N
+        );
+
+        int earnedExp = updatedCount > 0 ? correctCount * RETRY_QUIZ_CORRECT_EXP : 0;
 
         UserCharacter userCharacter = userCharacterRepository.findFirstByUser(user)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_CHARACTER_NOT_FOUND));
-
         int beforeLevel = userCharacter.getCurrentLevel();
         int beforeExp = userCharacter.getCurrentExp();
 
