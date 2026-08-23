@@ -143,7 +143,7 @@ public class QuizController {
             ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED, ErrorCode.INVALID_QUIZ_SESSION,
             ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID,
             ErrorCode.QUIZ_SESSION_COMPLETE_FAILED, ErrorCode.QUIZ_SESSION_READ_FAILED,
-            ErrorCode.USER_CHARACTER_NOT_FOUND})
+            ErrorCode.USER_CHARACTER_NOT_FOUND, ErrorCode.QUIZ_SESSION_NOT_FOUND})
     @Operation(summary = "다시풀기 결과 조회", description = "완료된 다시풀기 세션의 결과를 조회합니다. (최초 정산 시에만 정답 개수당 1 경험치를 지급합니다.)")
     @PostMapping("/retry-sessions/{sessionId}/result")
     public ResponseEntity<ApiResponse<RetryQuizResultResponseDto>> resultRetryQuiz(
