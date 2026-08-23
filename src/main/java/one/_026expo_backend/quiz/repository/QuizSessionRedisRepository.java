@@ -148,10 +148,21 @@ public class QuizSessionRedisRepository {
      * 퀴즈 세션 삭제
      *
      * 강제로 퀴즈 세션을 삭제해야 할 때 사용합니다.
-     * 일반적인 퀴즈 완료 처리는 complete()를 사용합니다.
+     * 비동기 삭제 시 동시성 문제를 막기 위해 세션 ID를 비교 후 삭제합니다.
      */
-    public void delete(Long userId) {
-        redisTemplate.delete(key(userId));
+    public void delete(Long userId, String expectedSessionId) {
+        String existingValue = redisTemplate.opsForValue().get(key(userId));
+
+        if (existingValue != null) {
+            try {
+                QuizListSessionDto existingSession = objectMapper.readValue(existingValue, QuizListSessionDto.class);
+                if (existingSession.getSessionId().equals(expectedSessionId)) {
+                    redisTemplate.delete(key(userId));
+                }
+            } catch (JsonProcessingException e) {
+                throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
+            }
+        }
     }
 
     /**
@@ -257,9 +268,6 @@ public class QuizSessionRedisRepository {
     /**
      * Redis에 저장된 기존 다시풀기 세션 상태 검증
      */
-    /**
-     * Redis에 저장된 기존 다시풀기 세션 상태 검증
-     */
     private void validateRetrySessionState(Long userId, RetryQuizSessionDto expectedSession) {
         String existingValue = redisTemplate.opsForValue().get(retryKey(userId));
 
@@ -273,7 +281,10 @@ public class QuizSessionRedisRepository {
 
             // 기존 세션 ID나 인덱스가 다르면 상태 충돌 에러
             if (!existingSession.getSessionId().equals(expectedSession.getSessionId()) ||
-                    !existingSession.getNextIndex().equals(expectedSession.getNextIndex())) {
+                    !existingSession.getNextIndex().equals(expectedSession.getNextIndex()) ||
+                    !existingSession.getFinished().equals(expectedSession.getFinished())) {
+
+                // 이미 다른 요청에 의해 상태가 변경되었다면 덮어쓰지 않고 에러를 던짐
                 throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
             }
         } catch (JsonProcessingException e) {
@@ -284,9 +295,24 @@ public class QuizSessionRedisRepository {
 
     /**
      * 다시풀기 세션 삭제
+     *
+     * 비동기 작업 시 새롭게 생성된 세션을 실수로 삭제하는 것을 방지하기 위해,
+     * 삭제 대상 세션 ID(expectedSessionId)가 일치할 때만 삭제합니다.
      */
-    public void deleteRetry(Long userId) {
-        redisTemplate.delete(retryKey(userId));
+    public void deleteRetry(Long userId, String expectedSessionId) {
+        String existingValue = redisTemplate.opsForValue().get(retryKey(userId));
+
+        if (existingValue != null) {
+            try {
+                RetryQuizSessionDto existingSession = objectMapper.readValue(existingValue, RetryQuizSessionDto.class);
+                // 현재 Redis에 저장된 세션 ID가 삭제하려는 세션 ID와 일치할 때만 삭제 실행
+                if (existingSession.getSessionId().equals(expectedSessionId)) {
+                    redisTemplate.delete(retryKey(userId));
+                }
+            } catch (JsonProcessingException e) {
+                throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
+            }
+        }
     }
 
     /**

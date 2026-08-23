@@ -50,14 +50,7 @@ public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
     );
 
     // 로그인한 유저가 마지막으로 푼 퀴즈 세션 id를 조회합니다.
-    @Query(value = """
-    select qr.session_id
-    from quiz_records qr
-    where qr.user_id = :userId
-    group by qr.session_id
-    order by max(qr.answered_at) desc, max(qr.quiz_record_id) desc
-    limit 1
-    """, nativeQuery = true)
+    @Query(value = "SELECT session_id FROM quiz_records WHERE user_id = :userId AND is_completed = 'Y' ORDER BY answered_at DESC LIMIT 1", nativeQuery = true)
     Optional<String> findLatestSessionIdByUserId(@Param("userId") Long userId);
 
     // 원본 세션의 다시풀기 경험치를 아직 지급하지 않은 경우에만 지급 완료로 변경합니다.
@@ -75,4 +68,13 @@ public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
             @Param("claimed") UseYnEnum claimed,
             @Param("unclaimed") UseYnEnum unclaimed
     );
+
+    // 특정 세션의 모든 레코드를 '정산 완료(Y)' 처리하는 메서드
+    @Modifying
+    @Query("UPDATE QuizRecord q SET q.isCompleted = :isCompleted WHERE q.sessionId = :sessionId")
+    void markSessionAsCompleted(@Param("sessionId") String sessionId, @Param("isCompleted") UseYnEnum isCompleted);
+
+    // 특정 세션의 정산 완료 여부를 확인하는 코드
+    @Query("SELECT CASE WHEN COUNT(q) > 0 THEN true ELSE false END FROM QuizRecord q WHERE q.sessionId = :sessionId AND q.isCompleted = 'Y'")
+    boolean isSessionCompleted(@Param("sessionId") String sessionId);
 }

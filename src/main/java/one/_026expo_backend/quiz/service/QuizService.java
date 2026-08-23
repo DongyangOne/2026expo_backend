@@ -282,15 +282,19 @@ public class QuizService {
 
         // 결과 정산 후, 현재 유저의 새로운 레벨 기준 최대 경험치를 Enum에서 조회
         int currentMaxExp = LevelPolicy.getMaxExpForLevel(userCharacter.getCurrentLevel());
+
         //결과에 따른 격려 및 칭찬 메세지 가져오기
         String resultMessage = QuizResultMessage.pick(correctCount, totalCount);
+
+        // DB에 해당 세션의 모든 퀴즈 기록을 '정산 완료' 상태로 업데이트
+        quizRecordRepository.markSessionAsCompleted(sessionId, UseYnEnum.Y);
 
         //db커밋 성공 후 삭제하도록 예약
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        quizSessionRedisRepository.delete(userId);
+                        quizSessionRedisRepository.delete(userId, sessionId);
                     }
                 }
         );
@@ -357,6 +361,11 @@ public class QuizService {
 
         if (!latestSessionId.equals(originSessionId)) {
             throw new BusinessException(ErrorCode.NOT_LATEST_QUIZ_SESSION);
+        }
+
+        // 미완료 세션(중간 이탈 등)의 다시풀기 강제 진입을 차단
+        if (!quizRecordRepository.isSessionCompleted(originSessionId)) {
+            throw new BusinessException(ErrorCode.QUIZ_NOT_FINISHED);
         }
 
         List<Long> wrongQuizIds = quizRecordRepository
@@ -501,7 +510,7 @@ public class QuizService {
                 new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        quizSessionRedisRepository.deleteRetry(userId);
+                        quizSessionRedisRepository.deleteRetry(userId, retrySessionId);
                     }
                 }
         );
