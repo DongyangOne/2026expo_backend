@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.CharacterInfo;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.QuizProfileInfo;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecyclingLogInfo;
-import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.WrongQuizInfo;
+import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecentQuizSessionInfo;
 
 @Slf4j
 @Service
@@ -184,7 +184,7 @@ public class UserService {
         // 사용자의 분리수거 로그 정보
         List<RecyclingLogInfo> recentRecyclingLogs = feedbackService.getRecentRecyclingLogs(userId);
         // 사용자의 최근 틀린 퀴즈 정보
-        WrongQuizInfo wrongQuizInfo = quizService.getLatestWrongQuiz(userId);
+        RecentQuizSessionInfo wrongQuizInfo = quizService.getLatestQuizSessionInfo(userId);
 
         return UserDashboardResponseDto.of(character, quizProfile, recentRecyclingLogs, wrongQuizInfo);
     }
