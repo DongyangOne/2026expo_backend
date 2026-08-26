@@ -3,15 +3,22 @@ package one._026expo_backend.quiz.repository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.exception.BusinessException;
 import one._026expo_backend.quiz.dto.redis.QuizListSessionDto;
+import one._026expo_backend.quiz.dto.redis.RetryQuizSessionDto;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 
 /**
  * 퀴즈 진행 상태를 Redis에 저장하고 조회하는 Repository
@@ -19,6 +26,7 @@ import java.util.UUID;
  * 기존 JPA Repository는 DB 테이블을 다루지만,
  * 이 클래스는 Redis를 저장소처럼 사용합니다.
  */
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class QuizSessionRedisRepository {
@@ -27,6 +35,7 @@ public class QuizSessionRedisRepository {
 
     //quiz 세션 데이터용 key정의
     private static final String KEY_PREFIX = "quiz:session:";
+    private static final String RETRY_KEY_PREFIX = "quiz:retry-session:";
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -59,6 +68,7 @@ public class QuizSessionRedisRepository {
 
             return sessionId;
         } catch (JsonProcessingException e) {
+            log.error("Redis JSON 처리 에러", e);
             throw new BusinessException(ErrorCode.QUIZ_SESSION_SAVE_FAILED);
         }
     }
@@ -91,6 +101,7 @@ public class QuizSessionRedisRepository {
             // 조회 성공 시, dto로 변환한 값을 반환
             return session;
         } catch (JsonProcessingException e) {
+            log.error("Redis JSON 처리 에러", e);
             throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
         }
     }
@@ -118,6 +129,7 @@ public class QuizSessionRedisRepository {
             // 같은 key에 새로운 value값으로 갱신
             redisTemplate.opsForValue().set(key(userId), value, QUIZ_SESSION_TTL);
         } catch (JsonProcessingException e) {
+            log.error("Redis JSON 처리 에러", e);
             throw new BusinessException(ErrorCode.QUIZ_SESSION_UPDATE_FAILED);
         }
     }
@@ -133,23 +145,217 @@ public class QuizSessionRedisRepository {
                 true
         );
 
-
         try {
             String value = objectMapper.writeValueAsString(completedSession);
             redisTemplate.opsForValue().set(key(userId), value, QUIZ_SESSION_TTL);
         } catch (JsonProcessingException e) {
+            log.error("Redis JSON 처리 에러", e);
             throw new BusinessException(ErrorCode.QUIZ_SESSION_COMPLETE_FAILED);
         }
     }
 
     /**
-     * 퀴즈 세션 삭제
+     * 다시풀기 퀴즈 세션 생성
      *
-     * 강제로 퀴즈 세션을 삭제해야 할 때 사용합니다.
-     * 일반적인 퀴즈 완료 처리는 complete()를 사용합니다.
+     * 원본 quiz_records에서 가져온 오답 quiz id 목록을 Redis에 저장합니다.
+     * 일반 퀴즈 세션과 충돌하지 않도록 별도 key prefix를 사용합니다.
      */
-    public void delete(Long userId) {
-        redisTemplate.delete(key(userId));
+    public String saveRetry(Long userId, String originSessionId, List<Long> quizIds) {
+        String sessionId = UUID.randomUUID().toString();
+
+        // 다시풀기 결과 정산 시 원본 세션을 추적할 수 있게 originSessionId도 함께 저장합니다.
+        RetryQuizSessionDto session = new RetryQuizSessionDto(
+                sessionId,
+                originSessionId,
+                quizIds,
+                1,
+                false,
+                0
+        );
+
+        try {
+            String value = objectMapper.writeValueAsString(session);
+            redisTemplate.opsForValue().set(retryKey(userId), value, QUIZ_SESSION_TTL);
+
+            return sessionId;
+        } catch (JsonProcessingException e) {
+            log.error("Redis JSON 처리 에러", e);
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_SAVE_FAILED);
+        }
+    }
+
+    /**
+     * 다시풀기 퀴즈 세션 조회
+     */
+    public RetryQuizSessionDto findRetry(Long userId, String sessionId) {
+        String value = redisTemplate.opsForValue().get(retryKey(userId));
+
+        if (value == null) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_NOT_FOUND);
+        }
+
+        try {
+            RetryQuizSessionDto session = objectMapper.readValue(value, RetryQuizSessionDto.class);
+
+            if (!session.getSessionId().equals(sessionId)) {
+                throw new BusinessException(ErrorCode.INVALID_QUIZ_SESSION);
+            }
+
+            return session;
+        } catch (JsonProcessingException e) {
+            log.error("Redis JSON 처리 에러", e);
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
+        }
+    }
+
+    /**
+     * 다시풀기 진행 상태 갱신
+     *
+     * 다시풀기는 DB에 기록하지 않으므로 정답 개수를 Redis에 임시 저장합니다.
+     */
+    public void updateRetryProgress(Long userId, RetryQuizSessionDto session, Integer nextIndex, Integer correctCount) {
+        RetryQuizSessionDto updatedSession = new RetryQuizSessionDto(
+                session.getSessionId(),
+                session.getOriginSessionId(),
+                session.getQuizIds(),
+                nextIndex,
+                false,
+                correctCount
+        );
+
+        // 검증과 저장을 한 번의 트랜잭션(Atomic)으로 묶어서 실행
+        executeAtomicRetryUpdate(userId, session, updatedSession);
+    }
+
+    /**
+     * 다시풀기 완료 처리
+     */
+    public void completeRetry(Long userId, RetryQuizSessionDto session, Integer nextIndex, Integer correctCount) {
+        RetryQuizSessionDto completedSession = new RetryQuizSessionDto(
+                session.getSessionId(),
+                session.getOriginSessionId(),
+                session.getQuizIds(),
+                nextIndex,
+                true,
+                correctCount
+        );
+
+        // 검증과 저장을 한 번의 트랜잭션(Atomic)으로 묶어서 실행
+        executeAtomicRetryUpdate(userId, session, completedSession);
+    }
+
+    /**
+     * Redis에 저장된 기존 다시풀기 세션 상태 검증
+     * 상태 확인(Check)과 저장(Set)을 한 번의 트랜잭션으로 묶어 동시성 덮어쓰기 이슈 방지
+     */
+    private void executeAtomicRetryUpdate(Long userId, RetryQuizSessionDto expectedSession, RetryQuizSessionDto newSession) {
+        String redisKey = retryKey(userId);
+
+        List<Object> txResults = redisTemplate.execute(new SessionCallback<List<Object>>() {
+            @Override
+            public List<Object> execute(RedisOperations operations) throws DataAccessException {
+                // 해당 키를 감시 시작 (도중에 건드리면 트랜잭션 취소)
+                operations.watch(redisKey);
+
+                // 현재 상태 가져오기
+                String existingValue = (String) operations.opsForValue().get(redisKey);
+                if (existingValue == null) {
+                    operations.unwatch();
+                    throw new BusinessException(ErrorCode.QUIZ_SESSION_NOT_FOUND);
+                }
+
+                try {
+                    RetryQuizSessionDto existingSession = objectMapper.readValue(existingValue, RetryQuizSessionDto.class);
+
+                    // 상태 검증
+                    if (!Objects.equals(existingSession.getSessionId(), expectedSession.getSessionId()) ||
+                            !Objects.equals(existingSession.getNextIndex(), expectedSession.getNextIndex()) ||
+                            !Objects.equals(existingSession.getFinished(), expectedSession.getFinished())) {
+                        operations.unwatch();
+                        throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
+                    }
+
+                    String newValue = objectMapper.writeValueAsString(newSession);
+
+                    // 감시 상태에서 덮어쓰기 예약
+                    operations.multi();
+                    operations.opsForValue().set(redisKey, newValue, QUIZ_SESSION_TTL);
+
+                    // 실행 (다른 요청이 새치기했다면 텅 빈 리스트 반환)
+                    return operations.exec();
+
+                } catch (JsonProcessingException e) {
+                    operations.unwatch();
+                    log.error("Redis JSON 처리 에러", e);
+                    throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
+                }
+            }
+        });
+
+        // 결과가 비어있다면 누군가 트랜잭션 도중에 새치기했다는 의미이므로 에러 반환
+        if (txResults == null || txResults.isEmpty()) {
+            throw new BusinessException(ErrorCode.QUIZ_SESSION_STATE_CONFLICT);
+        }
+    }
+
+    /**
+     * 퀴즈 세션 삭제
+     */
+    public void delete(Long userId, String expectedSessionId) {
+        compareAndDelete(
+                key(userId),
+                expectedSessionId,
+                QuizListSessionDto.class,
+                QuizListSessionDto::getSessionId
+        );
+    }
+
+    /**
+     * 다시풀기 세션 삭제
+     */
+    public void deleteRetry(Long userId, String expectedSessionId) {
+        compareAndDelete(
+                retryKey(userId),
+                expectedSessionId,
+                RetryQuizSessionDto.class,
+                RetryQuizSessionDto::getSessionId
+        );
+    }
+
+    /**
+     * 공통 세션 삭제 헬퍼 (Atomic Compare-and-Delete)
+     */
+    private <T> void compareAndDelete(String redisKey, String expectedSessionId,
+                                      Class<T> type, Function<T, String> sessionIdExtractor) {
+        redisTemplate.execute(new SessionCallback<List<Object>>() {
+            @Override
+            public List<Object> execute(RedisOperations operations) throws DataAccessException {
+                operations.watch(redisKey);
+
+                String existingValue = (String) operations.opsForValue().get(redisKey);
+                if (existingValue == null) {
+                    operations.unwatch();
+                    return null;
+                }
+
+                try {
+                    T existingSession = objectMapper.readValue(existingValue, type);
+                    if (!expectedSessionId.equals(sessionIdExtractor.apply(existingSession))) {
+                        operations.unwatch();
+                        return null;
+                    }
+
+                    operations.multi();
+                    operations.delete(redisKey);
+                    return operations.exec();
+
+                } catch (JsonProcessingException e) {
+                    operations.unwatch();
+                    log.error("Redis JSON 처리 에러", e);
+                    throw new BusinessException(ErrorCode.QUIZ_SESSION_READ_FAILED);
+                }
+            }
+        });
     }
 
     /**
@@ -162,6 +368,12 @@ public class QuizSessionRedisRepository {
         );
     }
 
+    /**
+     * 다시풀기 Redis key 생성 메서드
+     */
+    private String retryKey(Long userId) {
+        return RETRY_KEY_PREFIX + userId;
+    }
 
     /**
      * Redis key 생성 메서드

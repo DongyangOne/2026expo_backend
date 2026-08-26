@@ -48,6 +48,18 @@ public class QuizRecord {
     @Column(name = "earned_point", nullable = false)
     private Integer earnedPoint;
 
+    // 원본 세션의 다시풀기 경험치가 이미 지급되었는지 표시합니다.
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "retry_reward_claimed", nullable = false, columnDefinition = "ENUM('Y','N') DEFAULT 'N'")
+    private UseYnEnum retryRewardClaimed = UseYnEnum.N;
+
+    // 해당 퀴즈 세션이 최종 정산(resultQuiz)까지 완료되었는지 표시합니다.
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "is_completed", nullable = false, columnDefinition = "ENUM('Y','N') DEFAULT 'N'")
+    private UseYnEnum isCompleted = UseYnEnum.N;
+
     @Column(name = "answered_at", nullable = false)
     private LocalDateTime answeredAt;
 }

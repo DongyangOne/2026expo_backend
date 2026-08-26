@@ -4,11 +4,14 @@ import one._026expo_backend.global.enums.UseYnEnum;
 import one._026expo_backend.quiz.domain.Quiz;
 import one._026expo_backend.quiz.domain.QuizRecord;
 import one._026expo_backend.user.domain.Users;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -38,4 +41,40 @@ public interface QuizRecordRepository extends JpaRepository<QuizRecord, Long> {
 
     // 특정 유저가 틀린 문제 중 가장 최근의 것을 반환
     Optional<QuizRecord> findFirstByUsersIdAndIsCorrectOrderByAnsweredAtDesc(long userId, UseYnEnum isCorrect);
+
+    // 원본 퀴즈 세션에서 틀린 문제 기록만 풀이 순서대로 조회
+    List<QuizRecord> findByUsersAndSessionIdAndIsCorrectOrderByAnsweredAtAscQuizRecordIdAsc(
+            Users users,
+            String sessionId,
+            UseYnEnum isCorrect
+    );
+
+    // 로그인한 유저가 마지막으로 푼 퀴즈 세션 id를 조회합니다.
+    @Query(value = "SELECT session_id FROM quiz_records WHERE user_id = :userId AND is_completed = 'Y' ORDER BY answered_at DESC LIMIT 1", nativeQuery = true)
+    Optional<String> findLatestSessionIdByUserId(@Param("userId") Long userId);
+
+    // 원본 세션의 다시풀기 경험치를 아직 지급하지 않은 경우에만 지급 완료로 변경합니다.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+    update QuizRecord qr
+    set qr.retryRewardClaimed = :claimed
+    where qr.users = :user
+      and qr.sessionId = :sessionId
+      and qr.retryRewardClaimed = :unclaimed
+    """)
+    int markRetryRewardClaimedIfUnclaimed(
+            @Param("user") Users user,
+            @Param("sessionId") String sessionId,
+            @Param("claimed") UseYnEnum claimed,
+            @Param("unclaimed") UseYnEnum unclaimed
+    );
+
+    // 특정 세션의 모든 레코드를 '정산 완료(Y)' 처리하는 메서드
+    @Modifying
+    @Query("UPDATE QuizRecord q SET q.isCompleted = :isCompleted WHERE q.sessionId = :sessionId")
+    void markSessionAsCompleted(@Param("sessionId") String sessionId, @Param("isCompleted") UseYnEnum isCompleted);
+
+    // 특정 세션의 정산 완료 여부를 확인하는 코드
+    @Query("SELECT CASE WHEN COUNT(q) > 0 THEN true ELSE false END FROM QuizRecord q WHERE q.sessionId = :sessionId AND q.isCompleted = 'Y'")
+    boolean isSessionCompleted(@Param("sessionId") String sessionId);
 }

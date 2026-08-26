@@ -9,10 +9,8 @@ import one._026expo_backend.global.config.swagger.ApiErrorExceptions;
 import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.quiz.dto.request.NextQuizRequestDto;
-import one._026expo_backend.quiz.dto.response.NextQuizResponseDto;
+import one._026expo_backend.quiz.dto.response.*;
 import one._026expo_backend.quiz.dto.request.StartQuizRequestDto;
-import one._026expo_backend.quiz.dto.response.QuizResultResponseDto;
-import one._026expo_backend.quiz.dto.response.StartQuizResponseDto;
 import one._026expo_backend.quiz.service.QuizService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -74,7 +72,8 @@ public class QuizController {
      * 응답 데이터 : QuizResponseResponseDto
      */
     @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FINISHED, ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED, ErrorCode.USER_CHARACTER_NOT_FOUND,
-                        ErrorCode.INVALID_QUIZ_SESSION, ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID})
+            ErrorCode.INVALID_QUIZ_SESSION, ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID,
+            ErrorCode.QUIZ_SESSION_NOT_FOUND, ErrorCode.QUIZ_SESSION_COMPLETE_FAILED, ErrorCode.QUIZ_SESSION_READ_FAILED})
     @Operation(summary = "퀴즈 종료 및 결과 정산", description = "완료된 퀴즈 세션의 결과를 집계하고 캐릭터 경험치를 증가시킵니다.")
     @PostMapping("/sessions/{sessionId}/result")
     public ResponseEntity<ApiResponse<QuizResultResponseDto>> resultQuiz
@@ -88,6 +87,70 @@ public class QuizController {
             @PathVariable("sessionId") String sessionId
     ) {
         QuizResultResponseDto responseDto = quizService.resultQuiz(userId, sessionId);
+        return ResponseEntity.ok(ApiResponse.ok(responseDto));
+    }
+
+    /**
+     * 퀴즈 다시풀기 시작 API
+     *
+     * api 요청 예시 : POST /api/v1/quiz/sessions/{sessionId}/retry
+     * 원본 sessionId의 오답 문제만 Redis에 다시풀기 세션으로 저장합니다.
+     */
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FOUND,
+            ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID,
+            ErrorCode.QUIZ_SESSION_SAVE_FAILED, ErrorCode.NOT_LATEST_QUIZ_SESSION,
+            ErrorCode.QUIZ_NOT_FINISHED})
+    @Operation(summary = "퀴즈 다시풀기 시작", description = "기존 퀴즈 세션에서 틀린 문제만 가져와 다시풀기 세션을 시작합니다.")
+    @PostMapping("/sessions/{sessionId}/retry")
+    public ResponseEntity<ApiResponse<RetryQuizStartResponseDto>> startRetryQuiz(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable String sessionId
+    ) {
+        RetryQuizStartResponseDto responseDto = quizService.startRetryQuiz(userId, sessionId);
+        return ResponseEntity.ok(ApiResponse.ok(responseDto));
+    }
+
+    /**
+     * 다시풀기 정답 제출 및 다음 퀴즈 조회 API
+     *
+     * api 요청 예시 : POST /api/v1/quiz/retry-sessions/{sessionId}/answers
+     */
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FOUND,
+            ErrorCode.INVALID_QUIZ_ANSWER, ErrorCode.ALREADY_SOLVED_QUIZ,
+            ErrorCode.QUIZ_SESSION_NOT_FOUND, ErrorCode.INVALID_QUIZ_SEQUENCE,
+            ErrorCode.INVALID_QUIZ_SESSION, ErrorCode.QUIZ_SESSION_READ_FAILED,
+            ErrorCode.QUIZ_SESSION_UPDATE_FAILED, ErrorCode.QUIZ_SESSION_COMPLETE_FAILED,
+            ErrorCode.INVALID_QUIZ_ID, ErrorCode.MISSING_QUIZ_ANSWER,
+            ErrorCode.MISSING_SESSION_ID, ErrorCode.INVALID_SESSION_FORMAT,
+            ErrorCode.QUIZ_SESSION_STATE_CONFLICT})
+    @Operation(summary = "다시풀기 정답 제출 및 다음 퀴즈 조회", description = "다시풀기 세션의 현재 문제를 채점하고 다음 문제를 반환합니다.")
+    @PostMapping("/retry-sessions/{sessionId}/answers")
+    public ResponseEntity<ApiResponse<NextQuizResponseDto>> submitRetryAnswerAndNextQuiz(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable String sessionId,
+            @RequestBody NextQuizRequestDto requestDto
+    ) {
+        NextQuizResponseDto responseDto = quizService.moveOnRetryQuiz(userId, sessionId, requestDto);
+        return ResponseEntity.ok(ApiResponse.ok(responseDto));
+    }
+
+    /**
+     * 다시풀기 결과 조회 API
+     *
+     * api 요청 예시 : POST /api/v1/quiz/retry-sessions/{sessionId}/result
+     */
+    @ApiErrorExceptions({ErrorCode.USER_NOT_FOUND, ErrorCode.QUIZ_NOT_FINISHED,
+            ErrorCode.QUIZ_RESULT_RECORD_NOT_MATCHED, ErrorCode.INVALID_QUIZ_SESSION,
+            ErrorCode.INVALID_SESSION_FORMAT, ErrorCode.MISSING_SESSION_ID,
+            ErrorCode.QUIZ_SESSION_COMPLETE_FAILED, ErrorCode.QUIZ_SESSION_READ_FAILED,
+            ErrorCode.USER_CHARACTER_NOT_FOUND, ErrorCode.QUIZ_SESSION_NOT_FOUND})
+    @Operation(summary = "다시풀기 결과 조회", description = "완료된 다시풀기 세션의 결과를 조회합니다. (최초 정산 시에만 정답 개수당 1 경험치를 지급합니다.)")
+    @PostMapping("/retry-sessions/{sessionId}/result")
+    public ResponseEntity<ApiResponse<RetryQuizResultResponseDto>> resultRetryQuiz(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable String sessionId
+    ) {
+        RetryQuizResultResponseDto responseDto = quizService.resultRetryQuiz(userId, sessionId);
         return ResponseEntity.ok(ApiResponse.ok(responseDto));
     }
 

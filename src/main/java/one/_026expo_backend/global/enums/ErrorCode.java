@@ -65,6 +65,7 @@ public enum ErrorCode {
     MISSING_FEEDBACK_TEXT(HttpStatus.BAD_REQUEST, "MISSING_FEEDBACK_TEXT", "실패 사유가 누락되었습니다."),
     WASTE_TYPE_NOT_FOUND(HttpStatus.NOT_FOUND, "WASTE_TYPE_NOT_FOUND", "해당 쓰레기 종류를 찾을 수 없습니다."),
     DETECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "DETECTION_NOT_FOUND", "해당 검사 기록을 찾을 수 없습니다."),
+    NOT_LATEST_QUIZ_SESSION(HttpStatus.BAD_REQUEST, "NOT_LATEST_QUIZ_SESSION", "가장 최근 퀴즈 세션만 다시 풀 수 있습니다."),
     ADMIN_NOT_FOUND(HttpStatus.NOT_FOUND, "ADMIN_NOT_FOUND", "관리자 정보를 찾을 수 없습니다.");
 
     private final HttpStatus status;
