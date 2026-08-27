@@ -30,7 +30,7 @@ import one._026expo_backend.quiz.repository.QuizSessionRedisRepository;
 import one._026expo_backend.user.repository.UserRepository;
 import one._026expo_backend.user.domain.Users;
 import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.QuizProfileInfo;
-import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.WrongQuizInfo;
+import static one._026expo_backend.user.dto.response.UserDashboardResponseDto.RecentQuizSessionInfo;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -320,18 +320,36 @@ public class QuizService {
     }
 
     /**
-     * 유저의 틀린 문제들 중 가장 최근의 것을 반환
+     * 유저가 가장 최근에 푼 퀴즈 세션의 ID(UUID)와 정답률을 반환
      *
-     * @param userId 틀린 문제를 반환할 사용자의 고유 ID
-     * @return 푼 문제 중 틀린 문제가 있으면 가장 최근의 것을 반환, 없으면 null을 반환
+     * @param userId 조회할 사용자의 고유 ID
+     * @return 최근 푼 퀴즈 세션 정보 (기록이 없으면 null 반환)
      */
     @Transactional(readOnly = true)
-    public WrongQuizInfo getLatestWrongQuiz(Long userId) {
+    public RecentQuizSessionInfo getLatestQuizSessionInfo(Long userId) {
 
-        return quizRecordRepository
-                .findFirstByUsersIdAndIsCorrectOrderByAnsweredAtDesc(userId, UseYnEnum.N)
-                .map(record -> WrongQuizInfo.of(record.getQuiz()))
+        Users user = userRepository.findById(userId)
                 .orElse(null);
+
+        if (user == null) {
+            return null;
+        }
+
+        String latestSessionId = quizRecordRepository.findLatestSessionIdByUserId(userId)
+                .orElse(null);
+
+        if (latestSessionId == null) {
+            return null;
+        }
+
+        long totalCount = quizRecordRepository.countByUsersAndSessionId(user, latestSessionId);
+        long correctCount = quizRecordRepository.countByUsersAndSessionIdAndIsCorrect(user, latestSessionId, UseYnEnum.Y);
+
+        double accuracyRate = 0.0;
+        if (totalCount > 0) {
+            accuracyRate = Math.round(((double) correctCount / totalCount) * 100.0 * 10) / 10.0;
+        }
+        return RecentQuizSessionInfo.of(latestSessionId, accuracyRate);
     }
 
     private void syncCharacterWithLevel(UserCharacter userCharacter) {

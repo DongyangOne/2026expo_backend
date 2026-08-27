@@ -3,7 +3,6 @@ package one._026expo_backend.user.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import one._026expo_backend.feedback.enums.WasteType;
-import one._026expo_backend.quiz.domain.Quiz;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +24,7 @@ public class UserDashboardResponseDto {
     private List<RecyclingLogInfo> recyclingLogInfo;
 
     @Schema(description = "최근 틀린 퀴즈 ")
-    private WrongQuizInfo wrongQuizInfo;
+    private RecentQuizSessionInfo recentQuizSessionInfo;
 
 
     @Getter
@@ -119,23 +118,19 @@ public class UserDashboardResponseDto {
     @Builder
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
     @AllArgsConstructor
-    @Schema(description = "4. 내부 최근 틀린 퀴즈 DTO")
-    public static class WrongQuizInfo {
+    @Schema(description = "4. 내부 최근 퀴즈 세션 정보 DTO")
+    public static class RecentQuizSessionInfo {
 
-        @Schema(description = "퀴즈 ID", example = "15")
-        private Long quizId;
+        @Schema(description = "최근 퀴즈 세션 ID", example = "550e8400-e29b-41d4-a716-446655440000")
+        private String sessionId;
 
-        @Schema(description = "문제")
-        private String question;
+        @Schema(description = "해당 세션의 정답률", example = "80.0")
+        private Double accuracyRate;
 
-        @Schema(description = "문제 해설")
-        private String explan;
-
-        public static WrongQuizInfo of(Quiz quiz) {
-            return WrongQuizInfo.builder()
-                    .quizId(quiz.getQuizId())
-                    .question(quiz.getQuestion())
-                    .explan(quiz.getExplan())
+        public static RecentQuizSessionInfo of(String sessionId, Double accuracyRate) {
+            return RecentQuizSessionInfo.builder()
+                    .sessionId(sessionId)
+                    .accuracyRate(accuracyRate)
                     .build();
         }
     }
@@ -144,12 +139,12 @@ public class UserDashboardResponseDto {
             CharacterInfo characterInfo,
             QuizProfileInfo quizProfileInfo,
             List<RecyclingLogInfo> recyclingLogInfo,
-            WrongQuizInfo wrongQuizInfo) {
+            RecentQuizSessionInfo recentQuizSessionInfo) {
         return UserDashboardResponseDto.builder()
                 .characterInfo(characterInfo)
                 .quizProfileInfo(quizProfileInfo)
                 .recyclingLogInfo(recyclingLogInfo)
-                .wrongQuizInfo(wrongQuizInfo)
+                .recentQuizSessionInfo(recentQuizSessionInfo)
                 .build();
     }
 }
