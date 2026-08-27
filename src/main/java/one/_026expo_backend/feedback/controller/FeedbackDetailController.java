@@ -19,6 +19,7 @@ import one._026expo_backend.global.dto.ApiResponse;
 import one._026expo_backend.global.enums.ErrorCode;
 import one._026expo_backend.global.pagination.PageRequestDto;
 import one._026expo_backend.global.pagination.PageResponseDto;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -61,8 +62,10 @@ public class FeedbackDetailController {
 
     @Operation(summary = "관리자 피드백 조회", description = "로그인한 관리자와 소속이 같은 사용자의 피드백을 최신순으로 조회합니다.")
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponseDto<AdminFeedbackResponseDto>>>
-    getFeedbacks(@AuthenticationPrincipal Long adminId, @Valid @ModelAttribute PageRequestDto pageRequestDto) {
+    public ResponseEntity<ApiResponse<PageResponseDto<AdminFeedbackResponseDto>>> getFeedbacks(
+            @AuthenticationPrincipal Long adminId,
+            @Valid @ParameterObject PageRequestDto pageRequestDto
+    ) {
         PageResponseDto<AdminFeedbackResponseDto> response = feedbackDetailService.getFeedbacks(adminId, pageRequestDto);
 
         return ResponseEntity.ok(ApiResponse.ok(response));
