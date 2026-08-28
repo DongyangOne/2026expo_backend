@@ -89,6 +89,10 @@ jobs:
                 if docker rename "$PREVIOUS_CONTAINER" expo-backend \
                   && docker start expo-backend >/dev/null; then
                   echo "Previous expo-backend container restored." >&2
+
+                  if ! docker exec expo-nginx nginx -s reload >/dev/null; then
+                    echo "Backend rollback succeeded, but Nginx reload failed." >&2
+                  fi
                 else
                   echo "Automatic rollback failed; manual recovery is required." >&2
                 fi
@@ -168,6 +172,10 @@ jobs:
               docker logs --tail 100 expo-backend || true
               exit 1
             fi
+
+            echo "Reloading Nginx for the new backend container..."
+            docker exec expo-nginx nginx -t
+            docker exec expo-nginx nginx -s reload
 
             ROLLBACK_READY=0
             if ! docker rm "$PREVIOUS_CONTAINER"; then
