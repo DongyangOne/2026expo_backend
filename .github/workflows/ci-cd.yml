@@ -75,7 +75,36 @@ jobs:
             ENV_FILE="$(mktemp /tmp/expo-backend.env.XXXXXX)"
             chmod 600 "$ENV_FILE"
             PREVIOUS_CONTAINER=expo-backend-previous
+            NGINX_CONTAINER=expo-nginx
+            DOCKER_NETWORK=expo-network
             ROLLBACK_READY=0
+
+            validate_nginx_contract() {
+              if ! docker container inspect "$NGINX_CONTAINER" >/dev/null 2>&1; then
+                echo "Nginx container not found: $NGINX_CONTAINER" >&2
+                return 1
+              fi
+
+              if [ "$(docker inspect --format '{{.State.Running}}' "$NGINX_CONTAINER")" != "true" ]; then
+                echo "Nginx container is not running: $NGINX_CONTAINER" >&2
+                return 1
+              fi
+
+              for CONTAINER in "$NGINX_CONTAINER" expo-backend; do
+                if ! docker network inspect \
+                  --format '{{range .Containers}}{{println .Name}}{{end}}' \
+                  "$DOCKER_NETWORK" | grep -Fxq "$CONTAINER"; then
+                  echo "$CONTAINER is not connected to $DOCKER_NETWORK." >&2
+                  return 1
+                fi
+              done
+
+              if ! docker exec "$NGINX_CONTAINER" nginx -T 2>&1 \
+                | grep -Eq 'expo-backend([.:/]|[[:space:];])'; then
+                echo "Nginx upstream does not reference expo-backend." >&2
+                return 1
+              fi
+            }
 
             cleanup() {
               STATUS=$?
@@ -90,7 +119,7 @@ jobs:
                   && docker start expo-backend >/dev/null; then
                   echo "Previous expo-backend container restored." >&2
 
-                  if ! docker exec expo-nginx nginx -s reload >/dev/null; then
+                  if ! docker exec "$NGINX_CONTAINER" nginx -s reload >/dev/null; then
                     echo "Backend rollback succeeded, but Nginx reload failed." >&2
                   fi
                 else
@@ -117,8 +146,9 @@ jobs:
               exit 1
             fi
 
-            docker network inspect expo-network >/dev/null 2>&1 \
-              || docker network create expo-network
+            docker network inspect "$DOCKER_NETWORK" >/dev/null 2>&1 \
+              || docker network create "$DOCKER_NETWORK"
+            validate_nginx_contract
 
             echo "Replacing production container..."
             if docker container inspect "$PREVIOUS_CONTAINER" >/dev/null 2>&1; then
@@ -141,7 +171,7 @@ jobs:
             docker run -d \
               --name expo-backend \
               --restart unless-stopped \
-              --network expo-network \
+              --network "$DOCKER_NETWORK" \
               --env-file "$ENV_FILE" \
               -e SPRING_PROFILES_ACTIVE=prod \
               -p 8080:8080 \
@@ -174,8 +204,34 @@ jobs:
             fi
 
             echo "Reloading Nginx for the new backend container..."
-            docker exec expo-nginx nginx -t
-            docker exec expo-nginx nginx -s reload
+            validate_nginx_contract
+            docker exec "$NGINX_CONTAINER" nginx -t
+            docker exec "$NGINX_CONTAINER" nginx -s reload
+
+            echo "Checking the backend through Nginx..."
+            NGINX_READY=0
+            for attempt in $(seq 1 20); do
+              NGINX_STATUS="$(curl --silent --show-error \
+                --connect-timeout 2 \
+                --max-time 5 \
+                --header 'Host: oneexpo.kro.kr' \
+                --output /dev/null \
+                --write-out '%{http_code}' \
+                http://localhost/api-docs 2>/dev/null || true)"
+
+              if [ "$NGINX_STATUS" = "200" ]; then
+                NGINX_READY=1
+                break
+              fi
+
+              sleep 2
+            done
+
+            if [ "$NGINX_READY" -ne 1 ]; then
+              echo "Nginx health check failed: HTTP ${NGINX_STATUS:-unknown}" >&2
+              docker logs --tail 100 "$NGINX_CONTAINER" || true
+              exit 1
+            fi
 
             ROLLBACK_READY=0
             if ! docker rm "$PREVIOUS_CONTAINER"; then
