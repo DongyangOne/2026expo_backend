@@ -121,7 +121,12 @@ jobs:
               docker rm -f "$PREVIOUS_CONTAINER"
             fi
 
-            docker stop expo-backend
+            if ! docker stop expo-backend; then
+              docker start expo-backend >/dev/null 2>&1 || true
+              echo "Could not stop the existing container; deployment aborted." >&2
+              exit 1
+            fi
+
             if ! docker rename expo-backend "$PREVIOUS_CONTAINER"; then
               docker start expo-backend >/dev/null || true
               echo "Could not preserve the existing container." >&2
@@ -164,8 +169,10 @@ jobs:
               exit 1
             fi
 
-            docker rm "$PREVIOUS_CONTAINER"
             ROLLBACK_READY=0
+            if ! docker rm "$PREVIOUS_CONTAINER"; then
+              echo "New container is ready, but the previous container could not be removed." >&2
+            fi
 
             docker ps --filter name=expo-backend
             echo "Deployment completed: $DEPLOYED_SHA"
