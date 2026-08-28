@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Deploy on server
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
           DEPLOY_DIR: ${{ secrets.DEPLOY_COMPOSE_DIR }}
           DEPLOY_SHA: ${{ github.event_name == 'push' && github.sha || '' }}
@@ -65,7 +65,32 @@ jobs:
             echo "Building Docker image..."
             docker build -t oneexpo-backend .
 
-            ENV_FILE=/tmp/expo-backend.env
+            ENV_FILE="$(mktemp /tmp/expo-backend.env.XXXXXX)"
+            chmod 600 "$ENV_FILE"
+            PREVIOUS_CONTAINER=expo-backend-previous
+            ROLLBACK_READY=0
+
+            cleanup() {
+              STATUS=$?
+              trap - EXIT
+              rm -f "$ENV_FILE"
+
+              if [ "$STATUS" -ne 0 ] && [ "$ROLLBACK_READY" -eq 1 ]; then
+                echo "Deployment failed; restoring the previous container..." >&2
+                docker rm -f expo-backend >/dev/null 2>&1 || true
+
+                if docker rename "$PREVIOUS_CONTAINER" expo-backend \
+                  && docker start expo-backend >/dev/null; then
+                  echo "Previous expo-backend container restored." >&2
+                else
+                  echo "Automatic rollback failed; manual recovery is required." >&2
+                fi
+              fi
+
+              exit "$STATUS"
+            }
+            trap cleanup EXIT
+
             if ! docker container inspect expo-backend >/dev/null 2>&1; then
               echo "Existing expo-backend container not found; cannot preserve production environment variables." >&2
               exit 1
@@ -85,8 +110,18 @@ jobs:
               || docker network create expo-network
 
             echo "Replacing production container..."
+            if docker container inspect "$PREVIOUS_CONTAINER" >/dev/null 2>&1; then
+              docker rm -f "$PREVIOUS_CONTAINER"
+            fi
+
             docker stop expo-backend
-            docker rm expo-backend
+            if ! docker rename expo-backend "$PREVIOUS_CONTAINER"; then
+              docker start expo-backend >/dev/null || true
+              echo "Could not preserve the existing container." >&2
+              exit 1
+            fi
+            ROLLBACK_READY=1
+
             docker run -d \
               --name expo-backend \
               --restart unless-stopped \
@@ -119,6 +154,9 @@ jobs:
               docker logs --tail 100 expo-backend || true
               exit 1
             fi
+
+            docker rm "$PREVIOUS_CONTAINER"
+            ROLLBACK_READY=0
 
             docker ps --filter name=expo-backend
             echo "Deployment completed: $DEPLOYED_SHA"
