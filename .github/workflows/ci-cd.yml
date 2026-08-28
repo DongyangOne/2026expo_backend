@@ -2,52 +2,177 @@ name: Deploy Spring Boot
 
 on:
   push:
-    branches: [develop]
+    branches:
+      - develop
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Do not replace the production container from two workflow runs at once.
+concurrency:
+  group: deploy-develop
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    name: Deploy develop to server
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-
-      - name: Build Spring Boot Jar
-        run: |
-          chmod +x gradlew
-          ./gradlew clean bootJar --no-daemon
-
-      - name: Copy files to server
-        uses: appleboy/scp-action@v0.1.7
+      - name: Deploy on server
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          DEPLOY_DIR: ${{ secrets.DEPLOY_COMPOSE_DIR }}
+          DEPLOY_SHA: ${{ github.event_name == 'push' && github.sha || '' }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
-          source: "build/libs/*.jar,Dockerfile,docker-compose.yml"
-          target: ${{ secrets.DEPLOY_COMPOSE_DIR }}
-
-      - name: Deploy Docker
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          command_timeout: 25m
+          envs: DEPLOY_DIR,DEPLOY_SHA
           script: |
-            cd "${{ secrets.DEPLOY_COMPOSE_DIR }}"
+            set -eu
+
+            DEPLOY_DIR="${DEPLOY_DIR:-$HOME/expo-backend}"
+            case "$DEPLOY_DIR" in
+              "~") DEPLOY_DIR="$HOME" ;;
+              "~/"*) DEPLOY_DIR="$HOME/${DEPLOY_DIR#\~/}" ;;
+            esac
+
+            if [ ! -d "$DEPLOY_DIR/.git" ]; then
+              echo "Git repository not found: $DEPLOY_DIR" >&2
+              exit 1
+            fi
+
+            cd "$DEPLOY_DIR"
+
+            echo "Fetching the latest develop branch..."
+            git fetch --prune origin \
+              "+refs/heads/develop:refs/remotes/origin/develop"
+            git switch -C deploy/develop origin/develop
+
+            WORKTREE_STATUS="$(git status --porcelain=v1 --untracked-files=all)"
+            if [ -n "$WORKTREE_STATUS" ]; then
+              echo "Deployment aborted: server worktree contains local changes." >&2
+              printf '%s\n' "$WORKTREE_STATUS" >&2
+              exit 1
+            fi
+
+            DEPLOYED_SHA="$(git rev-parse HEAD)"
+            if [ -n "$DEPLOY_SHA" ] \
+              && ! git merge-base --is-ancestor "$DEPLOY_SHA" "$DEPLOYED_SHA"; then
+              echo "Triggered commit $DEPLOY_SHA is not included in $DEPLOYED_SHA" >&2
+              exit 1
+            fi
+            echo "Deploying commit: $DEPLOYED_SHA"
+
+            echo "Building Docker image..."
+            docker build -t oneexpo-backend .
+
+            ENV_FILE="$(mktemp /tmp/expo-backend.env.XXXXXX)"
+            chmod 600 "$ENV_FILE"
+            PREVIOUS_CONTAINER=expo-backend-previous
+            ROLLBACK_READY=0
+
+            cleanup() {
+              STATUS=$?
+              trap - EXIT
+              rm -f "$ENV_FILE"
+
+              if [ "$STATUS" -ne 0 ] && [ "$ROLLBACK_READY" -eq 1 ]; then
+                echo "Deployment failed; restoring the previous container..." >&2
+                docker rm -f expo-backend >/dev/null 2>&1 || true
+
+                if docker rename "$PREVIOUS_CONTAINER" expo-backend \
+                  && docker start expo-backend >/dev/null; then
+                  echo "Previous expo-backend container restored." >&2
+                else
+                  echo "Automatic rollback failed; manual recovery is required." >&2
+                fi
+              fi
+
+              exit "$STATUS"
+            }
+            trap cleanup EXIT
+
+            if ! docker container inspect expo-backend >/dev/null 2>&1; then
+              echo "Existing expo-backend container not found; cannot preserve production environment variables." >&2
+              exit 1
+            fi
+
+            docker inspect \
+              --format '{{range .Config.Env}}{{println .}}{{end}}' \
+              expo-backend > "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
+
+            if [ ! -s "$ENV_FILE" ]; then
+              echo "Environment-variable backup is empty: $ENV_FILE" >&2
+              exit 1
+            fi
 
             docker network inspect expo-network >/dev/null 2>&1 \
               || docker network create expo-network
 
-            docker compose up -d --build "${{ secrets.DEPLOY_SERVICE_NAME }}"
+            echo "Replacing production container..."
+            if docker container inspect "$PREVIOUS_CONTAINER" >/dev/null 2>&1; then
+              docker rm -f "$PREVIOUS_CONTAINER"
+            fi
 
-            docker compose ps
+            if ! docker stop expo-backend; then
+              docker start expo-backend >/dev/null 2>&1 || true
+              echo "Could not stop the existing container; deployment aborted." >&2
+              exit 1
+            fi
+
+            if ! docker rename expo-backend "$PREVIOUS_CONTAINER"; then
+              docker start expo-backend >/dev/null || true
+              echo "Could not preserve the existing container." >&2
+              exit 1
+            fi
+            ROLLBACK_READY=1
+
+            docker run -d \
+              --name expo-backend \
+              --restart unless-stopped \
+              --network expo-network \
+              --env-file "$ENV_FILE" \
+              -e SPRING_PROFILES_ACTIVE=prod \
+              -p 8080:8080 \
+              oneexpo-backend
+
+            echo "Waiting for Spring Boot..."
+            READY=0
+            for attempt in $(seq 1 40); do
+              if [ "$(docker inspect --format '{{.State.Running}}' expo-backend 2>/dev/null || true)" != "true" ]; then
+                echo "expo-backend stopped before becoming ready." >&2
+                docker logs --tail 100 expo-backend || true
+                exit 1
+              fi
+
+              if curl --fail --silent --show-error \
+                --connect-timeout 2 \
+                --max-time 5 \
+                http://localhost:8080/api-docs >/dev/null 2>&1; then
+                READY=1
+                break
+              fi
+
+              sleep 3
+            done
+
+            if [ "$READY" -ne 1 ]; then
+              echo "Health check timed out: http://localhost:8080/api-docs" >&2
+              docker logs --tail 100 expo-backend || true
+              exit 1
+            fi
+
+            ROLLBACK_READY=0
+            if ! docker rm "$PREVIOUS_CONTAINER"; then
+              echo "New container is ready, but the previous container could not be removed." >&2
+            fi
+
+            docker ps --filter name=expo-backend
+            echo "Deployment completed: $DEPLOYED_SHA"
