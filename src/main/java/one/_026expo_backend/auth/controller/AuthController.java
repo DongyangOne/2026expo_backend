@@ -226,7 +226,11 @@ public class AuthController {
     @GetMapping(value = "/qr/connect/{qrToken}", produces = {MediaType.TEXT_EVENT_STREAM_VALUE, MediaType.APPLICATION_JSON_VALUE}) // produces = MediaType.TEXT_EVENT_STREAM_VALUE로 SSE 사용 선언
     public ResponseEntity<SseEmitter> connectQrSse(@PathVariable String qrToken) {
         SseEmitter emitter = qrService.createSseConnection(qrToken);
-        return ResponseEntity.ok(emitter); // SseEmitter 객체는 json 형태 응답이 아니므로 ApiResponse로 감싸지 않음
+        // nginx 등 리버스 프록시가 SSE 응답을 버퍼링해 지연시키지 않도록 명시적으로 비활성화 요청
+        return ResponseEntity.ok()
+                .header("X-Accel-Buffering", "no")
+                .header("Cache-Control", "no-cache")
+                .body(emitter); // SseEmitter 객체는 json 형태 응답이 아니므로 ApiResponse로 감싸지 않음
     }
 
     /**
