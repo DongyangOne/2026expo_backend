@@ -241,7 +241,7 @@ public class AuthController {
      * @return 태블릿용 토큰이 포함된 로그인 정보
      */
     @Operation(summary = "QR 로그인 승인", description = "로그인된 사용자가 QR 토큰을 승인하면 태블릿용 로그인 토큰을 발급하고 SSE로 전달합니다.")
-    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.UNAUTHORIZED, ErrorCode.DELETED_USER, ErrorCode.INVALID_TOKEN})
+    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.UNAUTHORIZED, ErrorCode.DELETED_USER, ErrorCode.INVALID_TOKEN, ErrorCode.QR_LOGIN_IN_PROGRESS, ErrorCode.REDIS_CONNECTION_ERROR})
     @PostMapping("/qr/login")
     public ResponseEntity<ApiResponse<QrLoginResponseDto>> approveQrLogin(@Valid @RequestBody QrLoginRequestDto request, @CurrentUser Long userId) {
         QrLoginResponseDto response = qrService.approveQrLogin(request.getQrToken(), userId);

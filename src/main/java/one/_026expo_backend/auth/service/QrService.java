@@ -150,14 +150,21 @@ public class QrService {
         String redisKey = QR_PREFIX + qrToken;
 
         // QR 토큰 상태 확인
-        String status = redisTemplate.opsForValue().get(redisKey);
-        if (status == null || !status.equals(QR_PENDING)) { // Redis에서 대기 상태가 아니거나 상태가 비어있는 경우
-            throw new BusinessException(ErrorCode.INVALID_QR_TOKEN);
-        }
-
-        // 동시에 같은 QR 토큰이 중복 승인되는 것을 막기 위한 짧은 락 (처리 중 표시)
+        String status;
         String lockKey = QR_LOCK_PREFIX + qrToken;
-        Boolean locked = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.ofSeconds(10));
+        Boolean locked;
+        try {
+            status = redisTemplate.opsForValue().get(redisKey);
+            if (status == null || !status.equals(QR_PENDING)) { // Redis에서 대기 상태가 아니거나 상태가 비어있는 경우
+                throw new BusinessException(ErrorCode.INVALID_QR_TOKEN);
+            }
+
+            // 동시에 같은 QR 토큰이 중복 승인되는 것을 막기 위한 짧은 락 (처리 중 표시)
+            locked = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.ofSeconds(10));
+        } catch (RedisConnectionFailureException e) { // 백엔드 서버 <-> Redis 서버 연결 실패
+            log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
+            throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
+        }
         if (Boolean.FALSE.equals(locked)) { // 이미 다른 요청이 같은 QR 토큰을 처리 중
             throw new BusinessException(ErrorCode.QR_LOGIN_IN_PROGRESS);
         }
@@ -192,9 +199,15 @@ public class QrService {
 
                     // 태블릿에 실제로 전달이 성공했을 때만 QR 토큰을 소비 처리
                     redisTemplate.delete(redisKey);
-                } catch (IOException e) {
-                    // 전송 실패 시 QR 토큰은 그대로 두어 같은 QR로 재시도할 수 있게 함
+                } catch (IOException | IllegalStateException e) {
+                    // IOException: 전송 중 연결 끊김 / IllegalStateException: 타임아웃 등으로 emitter가 이미 완료된 경우
+                    // 두 경우 모두 태블릿에 전달되지 않았으므로 QR 토큰은 그대로 두어 같은 QR로 재시도할 수 있게 함
                     log.error("태블릿으로 로그인 데이터 전송 중 실패. qrToken: {}", qrToken, e);
+                    try {
+                        tabletEmitter.completeWithError(e);
+                    } catch (IllegalStateException alreadyCompleted) {
+                        // 이미 완료(타임아웃/에러)된 emitter인 경우 무시
+                    }
                 } finally {
                     // 메모리 연결 정리
                     emitters.remove(qrToken);
