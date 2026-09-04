@@ -37,6 +37,7 @@ public class QrService {
     private final UserRepository userRepository;
 
     private static final String QR_PREFIX = "qr:";
+    private static final String QR_LOCK_PREFIX = "qr:lock:";
     private static final String QR_PENDING = "PENDING";
     private static final String REFRESH_TOKEN_PREFIX = "refreshToken:tablet:";
 
@@ -154,46 +155,60 @@ public class QrService {
             throw new BusinessException(ErrorCode.INVALID_QR_TOKEN);
         }
 
-        // 사용한 혹은 검증이 완료된 QR 토큰은 다음 단계 진행 전 즉시 삭제하여 중복 승인 방지
-        redisTemplate.delete(redisKey);
-
-        // 태블릿용 토큰 발급
-        String tabletAccessToken = jwtProvider.createAccessToken(userId, Role.USER);
-        String tabletRefreshToken = jwtProvider.createRefreshToken(userId, Role.USER);
-
-        // tabletRefreshToken 만료 시간 계산
-        Duration refreshTokenTtl = calculateRefreshTokenTtl(tabletRefreshToken);
-
-        // 태블릿 RefreshToken을 Redis에 저장
-        String tabletRefreshKey = REFRESH_TOKEN_PREFIX + userId;
-        redisTemplate.opsForValue().set(tabletRefreshKey, tabletRefreshToken, refreshTokenTtl);
-
-        // SSE 전송용 응답 생성
-        QrLoginResponseDto loginResponse = QrLoginResponseDto.from(user, tabletAccessToken, tabletRefreshToken);
-
-        // 연결된 SSE 찾기
-        SseEmitter tabletEmitter = emitters.get(qrToken);
-
-        if (tabletEmitter != null) {
-            try {
-                // 태블릿에 성공 이벤트 전송
-                tabletEmitter.send(SseEmitter.event()
-                        .name(QR_SUCCESS_EVENT)
-                        .data(ApiResponse.ok(loginResponse)));
-
-                // SSE 연결 종료
-                tabletEmitter.complete();
-            } catch (IOException e) {
-                log.error("태블릿으로 로그인 데이터 전송 중 실패. qrToken: {}", qrToken, e);
-            } finally {
-                // 메모리 연결 정리
-                emitters.remove(qrToken);
-            }
-        } else {
-            log.warn("토큰은 유효하나 연결된 태블릿의 SSE 이미터를 찾을 수 없음(이미 브라우저를 닫았거나 만료됨) qrToken: {}", qrToken);
+        // 동시에 같은 QR 토큰이 중복 승인되는 것을 막기 위한 짧은 락 (처리 중 표시)
+        String lockKey = QR_LOCK_PREFIX + qrToken;
+        Boolean locked = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.ofSeconds(10));
+        if (Boolean.FALSE.equals(locked)) { // 이미 다른 요청이 같은 QR 토큰을 처리 중
+            throw new BusinessException(ErrorCode.QR_LOGIN_IN_PROGRESS);
         }
 
-        return loginResponse;
+        try {
+            // 태블릿용 토큰 발급
+            String tabletAccessToken = jwtProvider.createAccessToken(userId, Role.USER);
+            String tabletRefreshToken = jwtProvider.createRefreshToken(userId, Role.USER);
+
+            // tabletRefreshToken 만료 시간 계산
+            Duration refreshTokenTtl = calculateRefreshTokenTtl(tabletRefreshToken);
+
+            // 태블릿 RefreshToken을 Redis에 저장
+            String tabletRefreshKey = REFRESH_TOKEN_PREFIX + userId;
+            redisTemplate.opsForValue().set(tabletRefreshKey, tabletRefreshToken, refreshTokenTtl);
+
+            // SSE 전송용 응답 생성
+            QrLoginResponseDto loginResponse = QrLoginResponseDto.from(user, tabletAccessToken, tabletRefreshToken);
+
+            // 연결된 SSE 찾기
+            SseEmitter tabletEmitter = emitters.get(qrToken);
+
+            if (tabletEmitter != null) {
+                try {
+                    // 태블릿에 성공 이벤트 전송
+                    tabletEmitter.send(SseEmitter.event()
+                            .name(QR_SUCCESS_EVENT)
+                            .data(ApiResponse.ok(loginResponse)));
+
+                    // SSE 연결 종료
+                    tabletEmitter.complete();
+
+                    // 태블릿에 실제로 전달이 성공했을 때만 QR 토큰을 소비 처리
+                    redisTemplate.delete(redisKey);
+                } catch (IOException e) {
+                    // 전송 실패 시 QR 토큰은 그대로 두어 같은 QR로 재시도할 수 있게 함
+                    log.error("태블릿으로 로그인 데이터 전송 중 실패. qrToken: {}", qrToken, e);
+                } finally {
+                    // 메모리 연결 정리
+                    emitters.remove(qrToken);
+                }
+            } else {
+                // 태블릿에 전달할 방법이 없으므로 QR 토큰은 그대로 두어 재시도할 수 있게 함
+                log.warn("토큰은 유효하나 연결된 태블릿의 SSE 이미터를 찾을 수 없음(이미 브라우저를 닫았거나 만료됨) qrToken: {}", qrToken);
+            }
+
+            return loginResponse;
+        } finally {
+            // 처리 완료 후 락 해제 (성공/실패 모두)
+            redisTemplate.delete(lockKey);
+        }
     }
 
     /**
