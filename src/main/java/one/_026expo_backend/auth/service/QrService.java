@@ -157,7 +157,8 @@ public class QrService {
         // QR 토큰 키 생성
         String redisKey = QR_PREFIX + qrToken;
 
-        // QR 토큰 상태 확인
+        // QR 토큰 상태 확인 (락 없이 하는 사전 검증 - 이미 무효한 토큰에 대해 불필요한 락 경합을 피하기 위한 빠른 실패용.
+        // 최종 신뢰는 락 획득 후 재검증에서 이루어짐)
         String status;
         String lockKey = QR_LOCK_PREFIX + qrToken;
         // 락 소유권 식별용 고유 값 (다른 요청이 발급한 락을 실수로 해제하지 않기 위함)
@@ -180,6 +181,19 @@ public class QrService {
         }
 
         try {
+            // 락 획득 후 QR 상태 재검증 (TOCTOU 방지)
+            // 락 획득 전 상태 확인과 락 획득 사이에 다른 요청이 먼저 락을 잡고 QR 토큰을 소비했을 수 있으므로,
+            // 락을 쥔 이 시점에만 신뢰 가능한 최신 상태를 다시 조회해서 확인한다.
+            try {
+                String statusAfterLock = redisTemplate.opsForValue().get(redisKey);
+                if (statusAfterLock == null || !statusAfterLock.equals(QR_PENDING)) {
+                    throw new BusinessException(ErrorCode.INVALID_QR_TOKEN);
+                }
+            } catch (RedisConnectionFailureException e) {
+                log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
+                throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
+            }
+
             // 태블릿용 토큰 발급
             String tabletAccessToken = jwtProvider.createAccessToken(userId, Role.USER);
             String tabletRefreshToken = jwtProvider.createRefreshToken(userId, Role.USER);
