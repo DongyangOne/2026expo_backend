@@ -14,12 +14,14 @@ import one._026expo_backend.user.domain.Users;
 import one._026expo_backend.user.repository.UserRepository;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,6 +42,12 @@ public class QrService {
     private static final String QR_LOCK_PREFIX = "qr:lock:";
     private static final String QR_PENDING = "PENDING";
     private static final String REFRESH_TOKEN_PREFIX = "refreshToken:tablet:";
+    // 락 lease는 승인 처리(토큰 발급 + Redis 기록 + SSE 전송)에 걸리는 시간보다 넉넉히 길게 설정
+    private static final Duration QR_LOCK_LEASE = Duration.ofSeconds(30);
+    // 값이 내가 넣은 lockValue와 일치할 때만 삭제하는 원자적 unlock 스크립트 (락 소유권 검증)
+    private static final RedisScript<Long> UNLOCK_SCRIPT = RedisScript.of(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+            Long.class);
 
     /**
      * UUID로 QR 생성용 토큰을 생성하고 유효 시간과 함께 Redis에 저장한다.
@@ -152,6 +160,8 @@ public class QrService {
         // QR 토큰 상태 확인
         String status;
         String lockKey = QR_LOCK_PREFIX + qrToken;
+        // 락 소유권 식별용 고유 값 (다른 요청이 발급한 락을 실수로 해제하지 않기 위함)
+        String lockValue = UUID.randomUUID().toString();
         Boolean locked;
         try {
             status = redisTemplate.opsForValue().get(redisKey);
@@ -159,8 +169,8 @@ public class QrService {
                 throw new BusinessException(ErrorCode.INVALID_QR_TOKEN);
             }
 
-            // 동시에 같은 QR 토큰이 중복 승인되는 것을 막기 위한 짧은 락 (처리 중 표시)
-            locked = redisTemplate.opsForValue().setIfAbsent(lockKey, "LOCKED", Duration.ofSeconds(10));
+            // 동시에 같은 QR 토큰이 중복 승인되는 것을 막기 위한 락 (처리 중 표시)
+            locked = redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, QR_LOCK_LEASE);
         } catch (RedisConnectionFailureException e) { // 백엔드 서버 <-> Redis 서버 연결 실패
             log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
             throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
@@ -179,7 +189,12 @@ public class QrService {
 
             // 태블릿 RefreshToken을 Redis에 저장
             String tabletRefreshKey = REFRESH_TOKEN_PREFIX + userId;
-            redisTemplate.opsForValue().set(tabletRefreshKey, tabletRefreshToken, refreshTokenTtl);
+            try {
+                redisTemplate.opsForValue().set(tabletRefreshKey, tabletRefreshToken, refreshTokenTtl);
+            } catch (RedisConnectionFailureException e) {
+                log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
+                throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
+            }
 
             // SSE 전송용 응답 생성
             QrLoginResponseDto loginResponse = QrLoginResponseDto.from(user, tabletAccessToken, tabletRefreshToken);
@@ -198,7 +213,12 @@ public class QrService {
                     tabletEmitter.complete();
 
                     // 태블릿에 실제로 전달이 성공했을 때만 QR 토큰을 소비 처리
-                    redisTemplate.delete(redisKey);
+                    try {
+                        redisTemplate.delete(redisKey);
+                    } catch (RedisConnectionFailureException e) {
+                        log.error("Redis 서버가 꺼져있거나 네트워크 장애가 발생: {}", e.getMessage());
+                        throw new BusinessException(ErrorCode.REDIS_CONNECTION_ERROR);
+                    }
                 } catch (IOException | IllegalStateException e) {
                     // IOException: 전송 중 연결 끊김 / IllegalStateException: 타임아웃 등으로 emitter가 이미 완료된 경우
                     // 두 경우 모두 태블릿에 전달되지 않았으므로 QR 토큰은 그대로 두어 같은 QR로 재시도할 수 있게 함
@@ -219,8 +239,27 @@ public class QrService {
 
             return loginResponse;
         } finally {
-            // 처리 완료 후 락 해제 (성공/실패 모두)
-            redisTemplate.delete(lockKey);
+            // 처리 완료 후 락 해제 (성공/실패 모두). 내가 획득한 락일 때만 해제하며,
+            // 실패해도 기존 예외를 덮어쓰지 않도록 별도 예외를 던지지 않는다.
+            releaseLockIfOwned(lockKey, lockValue);
+        }
+    }
+
+    /**
+     * 소유권(lockValue)이 일치하는 경우에만 락을 해제한다.
+     * lease가 만료되어 다른 요청이 이미 같은 키에 새 락을 잡은 상황에서
+     * 그 락을 실수로 삭제하지 않도록 GET-비교-DEL을 Lua 스크립트로 원자적으로 처리한다.
+     *
+     * @param lockKey   락 키
+     * @param lockValue 이 요청이 락 획득 시 사용한 고유 값
+     */
+    private void releaseLockIfOwned(String lockKey, String lockValue) {
+        try {
+            redisTemplate.execute(UNLOCK_SCRIPT, List.of(lockKey), lockValue);
+        } catch (RedisConnectionFailureException e) {
+            // 락 해제 실패는 처리 결과(성공/실패)에 영향을 주지 않도록 예외를 던지지 않고 로그만 남김
+            // (lease가 있으므로 최악의 경우에도 QR_LOCK_LEASE 이후 자동 해제됨)
+            log.error("QR 락 해제 중 Redis 서버 장애 발생. lockKey: {}", lockKey, e);
         }
     }
 

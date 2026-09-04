@@ -229,7 +229,7 @@ public class AuthController {
         // nginx 등 리버스 프록시가 SSE 응답을 버퍼링해 지연시키지 않도록 명시적으로 비활성화 요청
         return ResponseEntity.ok()
                 .header("X-Accel-Buffering", "no")
-                .header("Cache-Control", "no-cache")
+                .header("Cache-Control", "no-store")
                 .body(emitter); // SseEmitter 객체는 json 형태 응답이 아니므로 ApiResponse로 감싸지 않음
     }
 
@@ -241,7 +241,7 @@ public class AuthController {
      * @return 태블릿용 토큰이 포함된 로그인 정보
      */
     @Operation(summary = "QR 로그인 승인", description = "로그인된 사용자가 QR 토큰을 승인하면 태블릿용 로그인 토큰을 발급하고 SSE로 전달합니다.")
-    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.UNAUTHORIZED, ErrorCode.DELETED_USER, ErrorCode.INVALID_TOKEN, ErrorCode.QR_LOGIN_IN_PROGRESS, ErrorCode.REDIS_CONNECTION_ERROR})
+    @ApiErrorExceptions({ErrorCode.INVALID_QR_TOKEN, ErrorCode.UNAUTHORIZED, ErrorCode.USER_NOT_FOUND, ErrorCode.DELETED_USER, ErrorCode.INVALID_TOKEN, ErrorCode.QR_LOGIN_IN_PROGRESS, ErrorCode.REDIS_CONNECTION_ERROR})
     @PostMapping("/qr/login")
     public ResponseEntity<ApiResponse<QrLoginResponseDto>> approveQrLogin(@Valid @RequestBody QrLoginRequestDto request, @CurrentUser Long userId) {
         QrLoginResponseDto response = qrService.approveQrLogin(request.getQrToken(), userId);
