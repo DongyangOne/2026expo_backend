@@ -61,9 +61,9 @@ public class QrService {
         String redisKey = QR_PREFIX + qrToken;// Redis에 저장할 Key 포맷 설정
 
         try {
-            // Key=토큰, Value="PENDING"으로 저장, 3분 뒤 삭제하도록 설정
+            // Key=토큰, Value="PENDING"으로 저장, 1분 뒤 삭제하도록 설정
             // 대기 상태(PENDING)로 저장, 앱에서 사용 시(로그인 완료 시) 완료(SUCCESS) 상태로 변경
-            redisTemplate.opsForValue().set(redisKey, QR_PENDING, Duration.ofMinutes(3));
+            redisTemplate.opsForValue().set(redisKey, QR_PENDING, Duration.ofMinutes(1));
             log.info("Successfully generated QR token and saved to Redis: {}", qrToken);
 
         } catch (RedisConnectionFailureException e) { // 백엔드 서버 <-> Redis 서버 연결 실패
@@ -98,7 +98,7 @@ public class QrService {
         }
 
         // 검증을 통과한 정상적인 경우에만 Emitter 생성
-        SseEmitter emitter = new SseEmitter(5 * 60 * 1000L); // 5분 동안 유지되는 연결선 생성
+        SseEmitter emitter = new SseEmitter(90 * 1000L); // 1분 30초 동안 유지되는 연결선 생성
 
         emitters.put(qrToken, emitter); // 메모리 맵에 보관
 
