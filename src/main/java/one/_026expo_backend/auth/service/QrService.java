@@ -105,18 +105,19 @@ public class QrService {
         // 연결선 만료 및 에러 핸들러 세팅
         // 클라이언트 <-> 백엔드 서버 연결 끊김
         emitter.onCompletion(() -> { // SSE 연결이 정상 종료된 경우
-            emitters.remove(qrToken); // 서버 메모리에서 토큰 연결 삭제
+            // 현재 맵에 있는 값이 동일한 emitter일 때만 삭제
+            emitters.remove(qrToken, emitter); // 서버 메모리에서 토큰 연결 삭제
         });
 
         emitter.onTimeout(() -> {
             log.info("토큰에 대한 SSE 연결 시간 만료: {}", qrToken);
-            emitters.remove(qrToken);
+            emitters.remove(qrToken, emitter);
             emitter.complete(); // 스프링에 연결이 끝났음을 알려줌
         });
 
         emitter.onError((e) -> {
             log.error("토큰에 대한 SSE 연결 중 에러 발생: {}, message: {}", qrToken, e.getMessage());
-            emitters.remove(qrToken);
+            emitters.remove(qrToken, emitter);
         });
 
         try {
@@ -124,7 +125,7 @@ public class QrService {
             emitter.send(SseEmitter.event().name("INIT").data(ApiResponse.ok("Connected!"))); // 최종 응답이 아니므로 ApiResponse로만 감쌈
         } catch (IOException e) { // 클라이언트 <-> 백엔드 서버 연결선 수립 실패
             log.error("토큰에 대한 SSE 초기화 데이터 전송 실패: {}", qrToken);
-            emitters.remove(qrToken);
+            emitters.remove(qrToken, emitter);
             // 대답을 수신할 클라이언트가 없는 상태이므로 응답을 보내기 위한 것이 아닌 작업 중지용 에러 처리
             // 이미 5분 연결선을 만들었기 때문에 정리하기 위함
             throw new BusinessException(ErrorCode.SSE_CONNECTION_ERROR);
@@ -244,7 +245,8 @@ public class QrService {
                     }
                 } finally {
                     // 메모리 연결 정리
-                    emitters.remove(qrToken);
+                    // 지금 처리한 tabletEmitter일 때만 삭제
+                    emitters.remove(qrToken, tabletEmitter);
                 }
             } else {
                 // 태블릿에 전달할 방법이 없으므로 QR 토큰은 그대로 두어 재시도할 수 있게 함
