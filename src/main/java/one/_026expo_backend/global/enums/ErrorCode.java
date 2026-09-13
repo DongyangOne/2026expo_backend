@@ -33,6 +33,7 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "아이디 또는 비밀번호가 맞지 않습니다."),
     INVALID_TOKEN(HttpStatus.BAD_REQUEST, "INVALID_TOKEN", "유효하지 않은 토큰입니다."),
     INVALID_QR_TOKEN(HttpStatus.BAD_REQUEST, "INVALID_QR_TOKEN", "유효하지 않은 QR토큰입니다."),
+    QR_LOGIN_IN_PROGRESS(HttpStatus.CONFLICT, "QR_LOGIN_IN_PROGRESS", "이미 처리 중인 QR 로그인 요청입니다."),
     EXPIRED_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "EXPIRED_REFRESH_TOKEN", "리프레시 토큰이 만료되었습니다."),
     AUTH_CODE_EXPIRED(HttpStatus.GONE, "AUTH_CODE_EXPIRED", "인증 코드가 만료되었습니다."),
     AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_CODE_MISMATCH", "인증 코드가 일치하지 않습니다."),
