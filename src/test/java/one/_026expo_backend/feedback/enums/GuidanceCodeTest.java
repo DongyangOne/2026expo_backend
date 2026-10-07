@@ -18,6 +18,8 @@ class GuidanceCodeTest {
         assertEquals(List.of(
                 "EMPTY_CONTENTS",
                 "WEIGHT_ANOMALY",
+                "REMOVE_STRAW",
+                "REMOVE_CUP_HOLDER",
                 "FOREIGN_MATERIAL",
                 "REMOVE_LABEL",
                 "COMPRESS"
