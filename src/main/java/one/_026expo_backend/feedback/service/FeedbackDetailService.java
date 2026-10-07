@@ -194,6 +194,10 @@ public class FeedbackDetailService {
             // 플라스틱·페트 라벨 미제거
             case "PLASTIC:REMOVE_LABEL" -> "feedback_plastic_vinlyOff.mp4";
 
+            case "PLASTIC:REMOVE_STRAW" -> "feedback_plastic_strawOff.mp4";
+
+            case "PLASTIC:REMOVE_CUP_HOLDER" -> "feedback_plastic_holderOff.mp4";
+
             case "PLASTIC:FOREIGN_MATERIAL" -> "feedback_plastic_foreign.mp4";
 
             // 페트 미압착

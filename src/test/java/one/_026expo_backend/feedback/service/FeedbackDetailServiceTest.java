@@ -30,6 +30,14 @@ class FeedbackDetailServiceTest {
                 "feedback_plastic_foreign.mp4",
                 FeedbackDetailService.resolveVideoFileName(WasteType.PLASTIC, "FOREIGN_MATERIAL")
         );
+        assertEquals(
+                "feedback_plastic_strawOff.mp4",
+                FeedbackDetailService.resolveVideoFileName(WasteType.PLASTIC, "REMOVE_STRAW")
+        );
+        assertEquals(
+                "feedback_plastic_holderOff.mp4",
+                FeedbackDetailService.resolveVideoFileName(WasteType.PLASTIC, "REMOVE_CUP_HOLDER")
+        );
     }
 
     @Test
