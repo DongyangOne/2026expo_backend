@@ -27,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.Optional;
 
@@ -171,38 +173,61 @@ public class FeedbackDetailService {
     /**
      * AI 안내 결과에 맞는 영상 파일명 결정
      */
-    static String resolveVideoFileName(WasteType wasteType, String guidanceCode) {
+    static List<String> resolveVideoFileNames(WasteType wasteType, String guidanceCode) {
         if (!StringUtils.hasText(guidanceCode)) {
-            return null;
+            return List.of();
         }
 
-        String key = wasteType.name() + ":" + guidanceCode.trim().toUpperCase();
+        List<String> videos = new ArrayList<>();
 
-        return switch (key) {
-            // 캔 내용물/무게 이상
-            case "CAN:EMPTY_CONTENTS" -> "feedback_can_waterOff.mp4";
+        // 쉼표로 여러 guidanceCode 전달 가능
+        String[] codes = guidanceCode.toUpperCase().split(",");
 
-            // 캔 미압착
-            case "CAN:COMPRESS" -> "feedback_can_dent.mp4";
+        for (String code : codes) {
+            String key = wasteType.name() + ":" + code.trim();
+            String video = switch (key) {
 
-            // 종이 무게 이상
-            case "PAPER:WEIGHT_ANOMALY" -> "feedback_paper_weight.mp4";
+                // 캔 내용물/무게 이상
+                case "CAN:EMPTY_CONTENTS" -> "feedback_can_waterOff.mp4";
 
-            // 플라스틱·페트 내용물/무게 이상
-            case "PLASTIC:EMPTY_CONTENTS" -> "feedback_plastic_waterOff.mp4";
+                case "CAN:COMPRESS" -> "feedback_can_dent.mp4";
 
-            // 플라스틱·페트 라벨 미제거
-            case "PLASTIC:REMOVE_LABEL" -> "feedback_plastic_vinlyOff.mp4";
+                 // 종이 무게 이상
+                case "PAPER:WEIGHT_ANOMALY" -> "feedback_paper_weight.mp4";
 
-            case "PLASTIC:FOREIGN_MATERIAL" -> "feedback_plastic_foreign.mp4";
+                // 플라스틱·페트 내용물/무게 이상
+                case "PLASTIC:EMPTY_CONTENTS" -> "feedback_plastic_waterOff.mp4";
 
-            // 페트 미압착
-            case "PLASTIC:COMPRESS" -> "feedback_plastic_dent.mp4";
+                // 플라스틱·페트 라벨 미제거
+                case "PLASTIC:REMOVE_LABEL" -> "feedback_plastic_vinlyOff.mp4";
 
-            case "VINYL:WEIGHT_ANOMALY" -> "feedback_vinly_weight.mp4";
+                // 플라스틱 외부 이물질
+                case "PLASTIC:FOREIGN_MATERIAL" -> "feedback_plastic_foreign.mp4";
 
-            default -> null;
-        };
+                // 테이크아웃잔 + 빨대
+                case "PLASTIC:REMOVE_STRAW" -> "feedback_plastic_strawOff.mp4";
+
+                // 테이크아웃잔 + 종이 홀더
+                case "PLASTIC:REMOVE_CUP_HOLDER" -> "feedback_plastic_holderOff.mp4";
+
+                // 테이크아웃잔 + 빨대 + 종이 홀더
+                case "PLASTIC:REMOVE_STRAW,REMOVE_CUP_HOLDER" -> "feedback_plastic_straw_holderOff.mp4";
+
+                // 페트 미압착
+                case "PLASTIC:COMPRESS" -> "feedback_plastic_dent.mp4";
+
+                // 비닐 무게 이상
+                case "VINYL:WEIGHT_ANOMALY" -> "feedback_vinly_weight.mp4";
+
+                default -> null;
+            };
+
+            if (video != null) {
+                videos.add(video);
+            }
+        }
+
+        return videos;
     }
 
     private String removeTrailingSlash(String value) {
