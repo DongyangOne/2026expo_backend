@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.Optional;
@@ -89,7 +88,9 @@ public class FeedbackDetailService {
 
         String fileName = resolveVideoFileName(wasteType, guidanceCode);
         if (StringUtils.hasText(fileName)) {
-            return createPresignedVideoUrl(feedbackFolder + "/" + fileName);
+            return createPresignedVideoUrl(
+                    removeTrailingSlash(feedbackFolder) + "/" + fileName
+            );
         }
 
         return findFeedbackDetailVideoAddr(wasteType, guidanceCode)
@@ -173,15 +174,25 @@ public class FeedbackDetailService {
     /**
      * AI 안내 결과에 맞는 영상 파일명 결정
      */
-    static List<String> resolveVideoFileNames(WasteType wasteType, String guidanceCode) {
-        if (!StringUtils.hasText(guidanceCode)) {
-            return List.of();
+    static String resolveVideoFileName(WasteType wasteType, String guidanceCode) {
+        if (wasteType == null || !StringUtils.hasText(guidanceCode)) {
+            return null;
         }
 
-        List<String> videos = new ArrayList<>();
+        List<String> codes = java.util.Arrays.stream(
+                        guidanceCode.toUpperCase(java.util.Locale.ROOT).split(",")
+                )
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
 
-        // 쉼표로 여러 guidanceCode 전달 가능
-        String[] codes = guidanceCode.toUpperCase().split(",");
+        // 순서와 관계없이 빨대 + 홀더 통합 영상 적용
+        if ("PLASTIC".equals(wasteType.name())
+                && codes.contains("REMOVE_STRAW")
+                && codes.contains("REMOVE_CUP_HOLDER")) {
+            return "feedback_plastic_straw_holderOff.mp4";
+        }
+
 
         for (String code : codes) {
             String key = wasteType.name() + ":" + code.trim();
@@ -223,11 +234,11 @@ public class FeedbackDetailService {
             };
 
             if (video != null) {
-                videos.add(video);
+                return video;
             }
         }
 
-        return videos;
+        return null;
     }
 
     private String removeTrailingSlash(String value) {
