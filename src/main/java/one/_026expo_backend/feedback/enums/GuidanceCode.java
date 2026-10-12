@@ -5,5 +5,7 @@ public enum GuidanceCode {
     WEIGHT_ANOMALY,   // 종이·비닐 무게 이상
     FOREIGN_MATERIAL, // 외부 이물질
     REMOVE_LABEL,     // 라벨 미제거
-    COMPRESS          // 미압착
+    COMPRESS,          // 미압착
+    REMOVE_CUP_HOLDER,
+    REMOVE_STRAW
 }
